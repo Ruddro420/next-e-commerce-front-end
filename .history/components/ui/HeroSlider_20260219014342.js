@@ -86,13 +86,13 @@ export default function HeroSlider() {
                     <div className="absolute left-6 bottom-6 flex gap-2">
                         <button
                             onClick={prev}
-                            className="cursor-pointer rounded-full bg-white/15 hover:bg-white/25 transition px-5 py-2.5 text-sm font-semibold border border-white/20 text-white"
+                            className="cursor-pointerrounded-full bg-white/15 hover:bg-white/25 transition px-5 py-2.5 text-sm font-semibold border border-white/20 text-white"
                         >
                             <ArrowBigLeftDash />
                         </button>
                         <button
                             onClick={next}
-                            className="cursor-pointer rounded-full bg-white/15 hover:bg-white/25 transition px-5 py-2.5 text-sm font-semibold border border-white/20 text-white"
+                            className="rounded-full bg-white/15 hover:bg-white/25 transition px-5 py-2.5 text-sm font-semibold border border-white/20 text-white"
                         >
                             <ArrowBigRightDash />
                         </button>
