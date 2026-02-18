@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Combined UI</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* small custom CSS (optional) */
+    .soft-card { box-shadow: 0 10px 30px rgba(16,24,40,.06); }
+    .floating-btn {
+      box-shadow: 0 12px 30px rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <!-- HEADER -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <!-- Logo -->
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600"></div>
+        <div class="leading-tight">
+          <div class="font-extrabold text-lg">ShopBangla</div>
+          <div class="text-xs text-slate-500">BD • ঢাকা</div>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="flex-1 hidden md:flex items-center gap-2">
+        <div class="flex-1 relative">
+          <input
+            class="w-full rounded-full border bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+            placeholder="পণ্য সার্চ করুন (যেমন: গাড়ি, ইলিশ, মুড়ি)"
+          />
+          <button class="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white">
+            খুঁজুন
+          </button>
+        </div>
+      </div>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-3">
+        <button class="hidden lg:inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm">
+          🎁 <span>বিশেষ অফার</span>
+        </button>
+
+        <button class="relative inline-flex items-center justify-center w-10 h-10 rounded-full border bg-white">
+          ❤
+          <span class="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5">12</span>
+        </button>
+
+        <button class="relative inline-flex items-center justify-center w-10 h-10 rounded-full border bg-white">
+          🛒
+          <span class="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5">5</span>
+        </button>
+
+        <button class="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-semibold">
+          লগইন / সাইনআপ
+        </button>
+      </div>
+    </div>
+
+    <!-- CATEGORY NAV -->
+    <nav class="bg-white">
+      <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-4 overflow-x-auto">
+        <a class="font-semibold text-emerald-700 whitespace-nowrap" href="#">হোম</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">ইলেকট্রনিক্স ও গ্যাজেট</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">গাড়ি ও লেদার</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">কাঁচাল ও ফল</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">মিষ্টি ও স্ন্যাক্স</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">হস্তশিল্প</a>
+        <a class="text-slate-600 hover:text-slate-900 whitespace-nowrap" href="#">গৃহসজ্জা</a>
+        <a class="ml-auto rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-sm font-semibold whitespace-nowrap" href="#">
+          ঈদ কালেকশন
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-10">
+    <!-- HERO (slider left + promos right) -->
+    <section class="grid lg:grid-cols-3 gap-5">
+      <!-- Main slider -->
+      <div class="lg:col-span-2 rounded-3xl soft-card bg-gradient-to-br from-sky-700 to-sky-500 overflow-hidden min-h-[280px] flex items-center">
+        <div class="p-6 md:p-10 text-white w-full">
+          <div class="text-sm opacity-90">১৪ ফেব্রুয়ারি, শনিবার</div>
+          <div class="mt-2 text-3xl md:text-5xl font-extrabold leading-tight">
+            আমাদের সকল আউটলেট<br/>সম্পূর্ণ রূপে <span class="text-amber-300">খোলা আছে!</span>
+          </div>
+          <div class="mt-5 text-sm opacity-90">জরুরী প্রয়োজনে মেইল করুন: webteam@startechbd.com</div>
+          <div class="mt-6 flex gap-2">
+            <button class="rounded-full bg-white/15 px-5 py-2.5 text-sm font-semibold border border-white/20">Prev</button>
+            <button class="rounded-full bg-white/15 px-5 py-2.5 text-sm font-semibold border border-white/20">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Promo cards -->
+      <div class="space-y-5">
+        <div class="rounded-3xl soft-card overflow-hidden bg-gradient-to-r from-orange-500 to-orange-400 min-h-[132px] p-5 text-white flex items-center justify-between">
+          <div>
+            <div class="text-2xl font-extrabold">সব কিছু অ্যাপে…</div>
+            <div class="text-sm opacity-90 mt-1">ডাউনলোড করুন</div>
+            <div class="mt-3 flex gap-2">
+              <span class="rounded-lg bg-black/25 px-3 py-2 text-xs">Google Play</span>
+              <span class="rounded-lg bg-black/25 px-3 py-2 text-xs">App Store</span>
+            </div>
+          </div>
+          <div class="w-20 h-20 rounded-2xl bg-white/15"></div>
+        </div>
+
+        <div class="rounded-3xl soft-card overflow-hidden bg-gradient-to-r from-sky-700 to-sky-500 min-h-[132px] p-5 text-white flex items-center justify-between">
+          <div>
+            <div class="text-xl font-extrabold">AC টন নিয়ে সহজ সমাধান!</div>
+            <div class="mt-2 inline-flex rounded-xl bg-white/15 px-4 py-2 font-bold">AC Ton Calculator</div>
+          </div>
+          <div class="w-20 h-20 rounded-2xl bg-white/15"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURED CATEGORY -->
+    <section class="text-center">
+      <h2 class="text-2xl font-extrabold">Featured Category</h2>
+      <p class="text-sm text-slate-600 mt-1">Get Your Desired Product from Featured Category!</p>
+
+      <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+        <!-- 16 cards -->
+        <!-- You can replace icons with SVGs later -->
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🛰️</div>
+          <div class="mt-2 text-sm font-semibold">Starlink</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">♨️</div>
+          <div class="mt-2 text-sm font-semibold">Water Heater</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🚁</div>
+          <div class="mt-2 text-sm font-semibold">Drone</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🎥</div>
+          <div class="mt-2 text-sm font-semibold">Gimbal</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🖥️</div>
+          <div class="mt-2 text-sm font-semibold">Table PC</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">📺</div>
+          <div class="mt-2 text-sm font-semibold">TV</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">📱</div>
+          <div class="mt-2 text-sm font-semibold">Mobile</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🔌</div>
+          <div class="mt-2 text-sm font-semibold">Accessories</div>
+        </a>
+
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">💾</div>
+          <div class="mt-2 text-sm font-semibold">Portable SSD</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">📷</div>
+          <div class="mt-2 text-sm font-semibold">WiFi Camera</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">✂️</div>
+          <div class="mt-2 text-sm font-semibold">Trimmer</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">⌚</div>
+          <div class="mt-2 text-sm font-semibold">Smart Watch</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🎬</div>
+          <div class="mt-2 text-sm font-semibold">Action Cam</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🎧</div>
+          <div class="mt-2 text-sm font-semibold">Earbuds</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🔊</div>
+          <div class="mt-2 text-sm font-semibold">Speakers</div>
+        </a>
+        <a class="bg-white rounded-2xl soft-card p-4 hover:-translate-y-0.5 transition" href="#">
+          <div class="text-2xl">🎮</div>
+          <div class="mt-2 text-sm font-semibold">Console</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- QUICK FEATURES (4 wide cards) -->
+    <section class="grid md:grid-cols-4 gap-4">
+      <a class="bg-white rounded-2xl soft-card p-5 flex items-center gap-4 hover:-translate-y-0.5 transition" href="#">
+        <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-xl">💻</div>
+        <div>
+          <div class="font-extrabold">Laptop Finder</div>
+          <div class="text-sm text-slate-600">Find Your Laptop Easily</div>
+        </div>
+      </a>
+
+      <a class="bg-white rounded-2xl soft-card p-5 flex items-center gap-4 hover:-translate-y-0.5 transition" href="#">
+        <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-xl">🧾</div>
+        <div>
+          <div class="font-extrabold">Raise a Complain</div>
+          <div class="text-sm text-slate-600">Share your experience</div>
+        </div>
+      </a>
+
+      <a class="bg-white rounded-2xl soft-card p-5 flex items-center gap-4 hover:-translate-y-0.5 transition" href="#">
+        <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-xl">🏠</div>
+        <div>
+          <div class="font-extrabold">Home Service</div>
+          <div class="text-sm text-slate-600">Get expert help.</div>
+        </div>
+      </a>
+
+      <a class="bg-white rounded-2xl soft-card p-5 flex items-center gap-4 hover:-translate-y-0.5 transition" href="#">
+        <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-xl">⚙️</div>
+        <div>
+          <div class="font-extrabold">Servicing Center</div>
+          <div class="text-sm text-slate-600">Repair Your Device</div>
+        </div>
+      </a>
+    </section>
+
+    <!-- FRESH DROPS (Product grid) -->
+    <section>
+      <div class="flex items-center gap-4 mb-5">
+        <div class="h-px flex-1 bg-slate-200"></div>
+        <h2 class="text-2xl font-extrabold">Fresh Drops</h2>
+        <div class="h-px flex-1 bg-slate-200"></div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Product card template -->
+        <article class="bg-white rounded-2xl soft-card overflow-hidden">
+          <div class="relative p-5 bg-slate-50">
+            <button class="absolute right-4 top-4 w-9 h-9 rounded-full bg-white border flex items-center justify-center">❤</button>
+            <div class="h-44 flex items-center justify-center">
+              <div class="w-24 h-32 rounded-xl bg-slate-200"></div>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="font-bold leading-snug">
+              Anua Peach Niacin Spread Cleansing Foam 150ml
+            </div>
+            <div class="text-sm text-slate-500 mt-1">150ml</div>
+            <div class="mt-2 font-extrabold text-slate-900">৳1,499</div>
+            <button class="mt-3 w-full rounded-xl border-2 border-blue-500 text-blue-600 font-bold py-2.5 text-sm hover:bg-blue-50">
+              🛒 ADD TO CART
+            </button>
+          </div>
+        </article>
+
+        <article class="bg-white rounded-2xl soft-card overflow-hidden">
+          <div class="relative p-5 bg-slate-50">
+            <button class="absolute right-4 top-4 w-9 h-9 rounded-full bg-white border flex items-center justify-center">❤</button>
+            <div class="h-44 flex items-center justify-center">
+              <div class="w-24 h-32 rounded-xl bg-yellow-200"></div>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="font-bold leading-snug">Medicube Kojic Acid Turmeric Toning Cleanser 120g</div>
+            <div class="text-sm text-slate-500 mt-1">120g</div>
+            <div class="mt-2 font-extrabold">৳1,699</div>
+            <button class="mt-3 w-full rounded-xl border-2 border-blue-500 text-blue-600 font-bold py-2.5 text-sm hover:bg-blue-50">
+              🛒 ADD TO CART
+            </button>
+          </div>
+        </article>
+
+        <article class="bg-white rounded-2xl soft-card overflow-hidden">
+          <div class="relative p-5 bg-slate-50">
+            <button class="absolute right-4 top-4 w-9 h-9 rounded-full bg-white border flex items-center justify-center">❤</button>
+            <div class="h-44 flex items-center justify-center">
+              <div class="w-24 h-32 rounded-xl bg-emerald-200"></div>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="font-bold leading-snug">PURITO SEOUL Wonder Releaf Centella Cream Unscented 50ml</div>
+            <div class="text-sm text-slate-500 mt-1">50ml</div>
+            <div class="mt-2 font-extrabold">৳1,699</div>
+            <button class="mt-3 w-full rounded-xl border-2 border-blue-500 text-blue-600 font-bold py-2.5 text-sm hover:bg-blue-50">
+              🛒 ADD TO CART
+            </button>
+          </div>
+        </article>
+
+        <article class="bg-white rounded-2xl soft-card overflow-hidden">
+          <div class="relative p-5 bg-slate-50">
+            <button class="absolute right-4 top-4 w-9 h-9 rounded-full bg-white border flex items-center justify-center">❤</button>
+            <div class="h-44 flex items-center justify-center">
+              <div class="w-24 h-32 rounded-xl bg-lime-200"></div>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="font-bold leading-snug">Celimax The Real Noni Energy Ampoule 10ml</div>
+            <div class="text-sm text-slate-500 mt-1">10ml</div>
+            <div class="mt-2 font-extrabold">৳400</div>
+            <button class="mt-3 w-full rounded-xl border-2 border-blue-500 text-blue-600 font-bold py-2.5 text-sm hover:bg-blue-50">
+              🛒 ADD TO CART
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div class="flex justify-center mt-7">
+        <a class="rounded-full border-2 border-blue-500 text-blue-600 font-extrabold px-8 py-3 hover:bg-blue-50 inline-flex items-center gap-2" href="#">
+          VIEW ALL PRODUCTS <span>→</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-14 bg-slate-950 text-slate-100">
+    <div class="max-w-7xl mx-auto px-4 py-12 grid md:grid-cols-3 lg:grid-cols-4 gap-10">
+      <!-- Support -->
+      <div>
+        <div class="tracking-[0.25em] text-xs font-bold opacity-80">SUPPORT</div>
+
+        <div class="mt-4 rounded-3xl border border-white/10 p-5">
+          <div class="text-xs opacity-70">9 AM - 8 PM</div>
+          <div class="mt-1 text-3xl font-extrabold text-orange-400">16793</div>
+        </div>
+
+        <div class="mt-4 rounded-3xl border border-white/10 p-5">
+          <div class="text-xs opacity-70">Store Locator</div>
+          <div class="mt-1 text-xl font-extrabold text-orange-400">Find Our Stores</div>
+        </div>
+      </div>
+
+      <!-- About Us -->
+      <div>
+        <div class="tracking-[0.25em] text-xs font-bold opacity-80">ABOUT US</div>
+        <ul class="mt-4 space-y-3 text-sm text-slate-300">
+          <li><a class="hover:text-white" href="#">Affiliate Program</a></li>
+          <li><a class="hover:text-white" href="#">Online Delivery</a></li>
+          <li><a class="hover:text-white" href="#">Refund and Return Policy</a></li>
+          <li><a class="hover:text-white" href="#">Blog</a></li>
+        </ul>
+      </div>
+
+      <!-- Policies -->
+      <div>
+        <div class="tracking-[0.25em] text-xs font-bold opacity-80">POLICIES</div>
+        <ul class="mt-4 space-y-3 text-sm text-slate-300">
+          <li><a class="hover:text-white" href="#">EMI Terms</a></li>
+          <li><a class="hover:text-white" href="#">Privacy Policy</a></li>
+          <li><a class="hover:text-white" href="#">Star Point Policy</a></li>
+          <li><a class="hover:text-white" href="#">Contact Us</a></li>
+        </ul>
+      </div>
+
+      <!-- Stay Connected -->
+      <div>
+        <div class="tracking-[0.25em] text-xs font-bold opacity-80">STAY CONNECTED</div>
+
+        <div class="mt-4 text-sm text-slate-300 space-y-2">
+          <div class="font-bold text-white">Star Tech Ltd</div>
+          <div>Head Office : 28 Kazi Nazrul Islam Ave, Navana Zohura Square, Dhaka 1000</div>
+          <div class="pt-2">
+            <div class="text-xs opacity-70">Email:</div>
+            <div class="text-orange-400 font-semibold">webteam@startechbd.com</div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex items-center gap-3">
+          <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20" href="#">💬</a>
+          <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20" href="#">f</a>
+          <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20" href="#">▶</a>
+          <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20" href="#">⌁</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t border-white/10">
+      <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="text-sm text-slate-400">Experience our App on your mobile:</div>
+        <div class="flex gap-3">
+          <div class="rounded-xl border border-white/10 px-4 py-2 text-sm">Google Play</div>
+          <div class="rounded-xl border border-white/10 px-4 py-2 text-sm">App Store</div>
+        </div>
+        <div class="text-xs text-slate-500">© 2026 Star Tech Ltd | All rights reserved</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- FLOATING RIGHT BUTTONS (Compare + Cart) -->
+  <div class="fixed right-4 bottom-20 z-50 flex flex-col gap-3">
+    <button class="floating-btn bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center relative">
+      ⇄
+      <span class="absolute -top-2 -right-2 text-[10px] bg-orange-500 text-white rounded-full px-1.5 py-0.5">0</span>
+      <span class="sr-only">Compare</span>
+    </button>
+
+    <button class="floating-btn bg-white text-slate-900 w-14 h-14 rounded-2xl flex items-center justify-center relative">
+      🛒
+      <span class="absolute -top-2 -right-2 text-[10px] bg-orange-500 text-white rounded-full px-1.5 py-0.5">0</span>
+      <span class="sr-only">Cart</span>
+    </button>
+  </div>
+</body>
+</html>
