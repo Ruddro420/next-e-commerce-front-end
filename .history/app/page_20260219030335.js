@@ -26,7 +26,7 @@ export default function HomePage() {
         </Container>
       </main>
 
-      {/* <ProductDetails/> */}
+      <ProductDetails/>
 
       {/* <Footer />
       <FloatingActions /> */}
