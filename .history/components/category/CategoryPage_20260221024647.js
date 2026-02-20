@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Container from "@/components/ui/Container";
-import { Heart, ShoppingCart, SlidersHorizontal, X, RotateCw } from "lucide-react";
+import { Heart, ShoppingCart, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 
 /* ===================== helpers ===================== */
@@ -81,8 +81,6 @@ export default function CategoryPage({ categoryId }) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [retryCount, setRetryCount] = useState(0);
-  const [isRetrying, setIsRetrying] = useState(false);
 
   const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
@@ -98,11 +96,8 @@ export default function CategoryPage({ categoryId }) {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 2000; // 2 seconds
-  const TIMEOUT_DURATION = 12000; // 12 seconds
-
-  const fetchCategoryData = useCallback(async (isRetryAttempt = false) => {
+  // fetch
+  useEffect(() => {
     if (!baseUrl) {
       setError("NEXT_PUBLIC_API_BASE_URL missing. Restart dev server after setting .env.local");
       setLoading(false);
@@ -115,60 +110,38 @@ export default function CategoryPage({ categoryId }) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+    const t = setTimeout(() => controller.abort(), 12000);
 
-    try {
-      if (isRetryAttempt) {
-        setIsRetrying(true);
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const url = `${baseUrl}/api/categories/${categoryId}/products`;
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+
+        if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+
+        const data = await res.json();
+        setCategory(data?.category || null);
+        setProducts(Array.isArray(data?.products) ? data.products : []);
+      } catch (e) {
+        setError(e?.name === "AbortError" ? "Request timeout (API not reachable)" : e.message);
+        setCategory(null);
+        setProducts([]);
+      } finally {
+        clearTimeout(t);
+        setLoading(false);
       }
-      setLoading(true);
-      setError("");
-
-      const url = `${baseUrl}/api/categories/${categoryId}/products`;
-      const res = await fetch(url, { 
-        cache: "no-store", 
-        signal: controller.signal 
-      });
-
-      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-
-      const data = await res.json();
-      setCategory(data?.category || null);
-      setProducts(Array.isArray(data?.products) ? data.products : []);
-      
-      // Reset retry count on success
-      setRetryCount(0);
-      setError("");
-    } catch (e) {
-      const errorMessage = e?.name === "AbortError" 
-        ? "Request timeout. The server is taking too long to respond." 
-        : e.message;
-      
-      setError(errorMessage);
-      setCategory(null);
-      setProducts([]);
-
-      // Auto retry logic
-      if (retryCount < MAX_RETRIES) {
-        setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-        }, RETRY_DELAY);
-      }
-    } finally {
-      clearTimeout(timeoutId);
-      setLoading(false);
-      setIsRetrying(false);
     }
-  }, [baseUrl, categoryId, retryCount]);
 
-  // Initial fetch and retry on retryCount change
-  useEffect(() => {
-    fetchCategoryData(retryCount > 0);
-  }, [fetchCategoryData, retryCount]);
+    load();
 
-  const handleManualRetry = () => {
-    setRetryCount(prev => prev + 1);
-  };
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [baseUrl, categoryId]);
 
   // sidebar options
   const allBrands = useMemo(() => {
@@ -252,46 +225,6 @@ export default function CategoryPage({ categoryId }) {
     return list;
   }, [products, type, inStockOnly, selectedBrands, selectedSizes, priceMax, sort]);
 
-  // Full error state (no data loaded)
-  if (error && !products.length && !loading) {
-    return (
-      <div className="bg-slate-50 min-h-screen">
-        <Container className="py-8">
-          <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-            <div className="text-red-600 mb-4">
-              <span className="text-5xl">⚠️</span>
-            </div>
-            <h3 className="text-lg font-semibold text-red-700 mb-2">Failed to Load Category</h3>
-            <p className="text-sm text-red-600 mb-4">{error}</p>
-            
-            <div className="space-y-3">
-              <button
-                onClick={handleManualRetry}
-                disabled={isRetrying}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-              >
-                <RotateCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-                {isRetrying ? 'Retrying...' : 'Try Again'}
-              </button>
-              
-              {retryCount > 0 && retryCount < MAX_RETRIES && (
-                <div className="text-sm text-gray-600">
-                  Auto retrying... ({retryCount}/{MAX_RETRIES})
-                </div>
-              )}
-              
-              {retryCount >= MAX_RETRIES && (
-                <div className="text-sm text-gray-600">
-                  Maximum retry attempts reached. Please try again later.
-                </div>
-              )}
-            </div>
-          </div>
-        </Container>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-slate-50 min-h-screen">
       <Container className="py-8">
@@ -299,12 +232,8 @@ export default function CategoryPage({ categoryId }) {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <div className="text-xs text-slate-500">Category</div>
-            <h1 className="text-2xl md:text-3xl font-extrabold capitalize">
-              {category?.name || "Category"}
-            </h1>
-            <p className="text-sm text-slate-600 mt-1">
-              {loading ? "Loading..." : `${filteredProducts.length} products found`}
-            </p>
+            <h1 className="text-2xl md:text-3xl font-extrabold capitalize">{category?.name || "Category"}</h1>
+            <p className="text-sm text-slate-600 mt-1">{loading ? "Loading..." : `${filteredProducts.length} products found`}</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -320,7 +249,6 @@ export default function CategoryPage({ categoryId }) {
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               className="rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-              disabled={loading}
             >
               <option value="newest">Sort: Newest</option>
               <option value="price_low">Price: Low to High</option>
@@ -329,25 +257,9 @@ export default function CategoryPage({ categoryId }) {
           </div>
         </div>
 
-        {/* Warning banner for partial data with error */}
-        {error && products.length > 0 && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-yellow-600">⚠️</span>
-              <p className="text-sm text-yellow-700">
-                Some products couldn't be loaded completely. {error}
-              </p>
-            </div>
-            <button
-              onClick={handleManualRetry}
-              disabled={isRetrying}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition disabled:opacity-50"
-            >
-              <RotateCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
-              Retry
-            </button>
-          </div>
-        )}
+        {error ? (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+        ) : null}
 
         <div className="mt-6 grid lg:grid-cols-4 gap-6">
           {/* Desktop Sidebar */}
@@ -365,7 +277,6 @@ export default function CategoryPage({ categoryId }) {
             selectedSizes={selectedSizes}
             setSelectedSizes={setSelectedSizes}
             onClear={clearAll}
-            disabled={loading}
           />
 
           {/* Products */}
@@ -439,7 +350,6 @@ export default function CategoryPage({ categoryId }) {
                 selectedSizes={selectedSizes}
                 setSelectedSizes={setSelectedSizes}
                 onClear={clearAll}
-                disabled={loading}
               />
             </div>
 
@@ -458,22 +368,18 @@ export default function CategoryPage({ categoryId }) {
 
 /* ===================== Sidebar ===================== */
 
-function SidebarFilters({ disabled, ...props }) {
+function SidebarFilters(props) {
   return (
     <aside className="hidden lg:block">
       <div className="border border-gray-300 bg-white rounded-2xl soft-card overflow-hidden sticky top-24">
         <div className="px-5 py-4 border-b border-gray-300 flex items-center justify-between">
           <div className="font-extrabold">Filters</div>
-          <button 
-            onClick={props.onClear} 
-            className="text-sm font-bold text-emerald-700 hover:underline disabled:opacity-50"
-            disabled={disabled}
-          >
+          <button onClick={props.onClear} className="text-sm font-bold text-emerald-700 hover:underline">
             Clear
           </button>
         </div>
         <div className="p-5">
-          <SidebarFiltersContent disabled={disabled} {...props} />
+          <SidebarFiltersContent {...props} />
         </div>
       </div>
     </aside>
@@ -494,10 +400,8 @@ function SidebarFiltersContent({
   selectedSizes,
   setSelectedSizes,
   onClear,
-  disabled = false,
 }) {
   const toggle = (arr, value, setter) => {
-    if (disabled) return;
     setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
   };
 
@@ -514,14 +418,10 @@ function SidebarFiltersContent({
           ].map((t) => (
             <button
               key={t.k}
-              onClick={() => !disabled && setType(t.k)}
-              disabled={disabled}
+              onClick={() => setType(t.k)}
               className={[
-                "rounded-xl border border-gray-300 px-3 py-2 text-xs font-extrabold",
-                disabled && "opacity-50 cursor-not-allowed",
-                type === t.k 
-                  ? "bg-slate-900 text-white border-slate-900" 
-                  : "bg-white text-slate-800 hover:bg-slate-50",
+                "rounded-xl border border-gray-300 px-3 py-2 text-xs font-extrabold hover:bg-slate-50",
+                type === t.k ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-800",
               ].join(" ")}
             >
               {t.label}
@@ -537,11 +437,9 @@ function SidebarFiltersContent({
           <div className="text-xs text-slate-500 mt-0.5">Hide out-of-stock products</div>
         </div>
         <button
-          onClick={() => !disabled && setInStockOnly((x) => !x)}
-          disabled={disabled}
+          onClick={() => setInStockOnly((x) => !x)}
           className={[
             "w-12 h-7 rounded-full border transition relative",
-            disabled && "opacity-50 cursor-not-allowed",
             inStockOnly ? "bg-[#008159] border-[#008159]" : "bg-slate-200 border-slate-300",
           ].join(" ")}
         >
@@ -564,9 +462,8 @@ function SidebarFiltersContent({
           max="500000"
           step="50"
           value={priceMax}
-          onChange={(e) => !disabled && setPriceMax(parseInt(e.target.value, 10))}
-          disabled={disabled}
-          className={["mt-3 w-full", disabled && "opacity-50 cursor-not-allowed"].join(" ")}
+          onChange={(e) => setPriceMax(parseInt(e.target.value, 10))}
+          className="mt-3 w-full"
         />
       </div>
 
@@ -576,12 +473,11 @@ function SidebarFiltersContent({
           <div className="font-extrabold text-sm">Brand</div>
           <div className="mt-3 space-y-2 max-h-44 overflow-auto pr-1">
             {allBrands.map((b) => (
-              <label key={b} className={["flex items-center gap-2 text-sm", disabled && "opacity-50"].join(" ")}>
+              <label key={b} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={selectedBrands.includes(b)}
                   onChange={() => toggle(selectedBrands, b, setSelectedBrands)}
-                  disabled={disabled}
                   className="h-4 w-4"
                 />
                 <span className="text-slate-700">{b}</span>
@@ -602,13 +498,9 @@ function SidebarFiltersContent({
                 <button
                   key={s}
                   onClick={() => toggle(selectedSizes, s, setSelectedSizes)}
-                  disabled={disabled}
                   className={[
                     "px-3 py-1.5 rounded-lg border text-xs font-extrabold transition",
-                    disabled && "opacity-50 cursor-not-allowed",
-                    active 
-                      ? "bg-slate-900 text-white border-slate-900" 
-                      : "bg-white hover:bg-slate-50 border-gray-300 text-slate-800",
+                    active ? "bg-slate-900 text-white border-slate-900" : "bg-white hover:bg-slate-50 border-gray-300 text-slate-800",
                   ].join(" ")}
                 >
                   {s}
@@ -623,8 +515,7 @@ function SidebarFiltersContent({
       {/* Clear */}
       <button
         onClick={onClear}
-        disabled={disabled}
-        className="w-full rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-extrabold py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-extrabold py-2.5"
       >
         Clear all filters
       </button>

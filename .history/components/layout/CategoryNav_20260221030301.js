@@ -36,11 +36,19 @@ export default function CategoryNav() {
         ) : (
           <>
             <Link
-              // key={c.id}
-              href={`/`}
+              key={c.id}
+              href={`/category/${c.id}`}
               className="flex items-center gap-2 whitespace-nowrap text-md text-slate-600 hover:text-slate-900"
             >
-              <span className="font-semibold">Home</span>
+              {imgSrc ? (
+                <img
+                  src={imgSrc}
+                  alt={c.name}
+                  className="w-6 h-6 rounded-full object-cover border border-gray-200"
+                  loading="lazy"
+                />
+              ) : null}
+              <span className="font-semibold">{c.name}</span>
             </Link>
             {categories.map((c) => {
               const imgSrc = c.image_path ? `${baseUrl}/storage/${c.image_path}` : null;

@@ -458,10 +458,10 @@ export default function ProductDetails({ productId }) {
                             key={v.id}
                             onClick={() => onVariantChange(v.id)}
                             className={[
-                              "h-8 px-3 rounded border border-gray-300 text-sm font-semibold",
+                              "h-8 px-3 rounded border text-sm font-semibold",
                               active
-                                ? "border-gray-300 bg-slate-900 text-white"
-                                : "border-gray-300 bg-white hover:bg-slate-50",
+                                ? "border-slate-900 bg-slate-900 text-white"
+                                : "border-slate-300 bg-white hover:bg-slate-50",
                             ].join(" ")}
                           >
                             {label}
@@ -522,9 +522,9 @@ export default function ProductDetails({ productId }) {
             </div>
 
             {/* DISCLAIMER BOX */}
-            <div className="mt-8 rounded-lg border border-gray-300 bg-white p-4">
+            <div className="mt-8 rounded-lg border bg-white p-4">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 h-7 w-7 rounded-full border border-gray-300 flex items-center justify-center text-slate-700">
+                <div className="mt-0.5 h-7 w-7 rounded-full border flex items-center justify-center text-slate-700">
                   i
                 </div>
                 <div>
@@ -543,25 +543,25 @@ export default function ProductDetails({ productId }) {
 
             {/* 3 Feature Cards */}
             <div className="mt-6 grid md:grid-cols-3 gap-4">
-              <div className="rounded-lg border border-gray-300 bg-white p-6 text-center">
+              <div className="rounded-lg border bg-white p-6 text-center">
                 <div className="text-2xl">🚚</div>
                 <div className="mt-2 font-extrabold">Fast Shipping</div>
               </div>
 
-              <div className="rounded-lg border border-gray-300 bg-white p-6 text-center">
+              <div className="rounded-lg border bg-white p-6 text-center">
                 <div className="text-2xl">🛡️</div>
                 <div className="mt-2 font-extrabold">Secure Payment</div>
                 <div className="text-xs text-slate-500 mt-1">100% Protected</div>
               </div>
 
-              <div className="rounded-lg border border-gray-300 bg-white p-6 text-center">
+              <div className="rounded-lg border bg-white p-6 text-center">
                 <div className="text-2xl">↩️</div>
                 <div className="mt-2 font-extrabold">Easy Returns</div>
               </div>
             </div>
 
             {/* Description Section (keep HTML) */}
-            <div className="mt-6 rounded-lg border border-gray-300 bg-white p-6">
+            <div className="mt-6 rounded-lg border bg-white p-6">
               <h2 className="text-xl font-extrabold">Description</h2>
               <div
                 className="mt-3 text-sm text-slate-600 leading-relaxed prose max-w-none"

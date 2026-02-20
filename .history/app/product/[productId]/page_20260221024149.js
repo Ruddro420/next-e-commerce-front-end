@@ -4,9 +4,11 @@ import Container from '@/components/ui/Container';
 import React from 'react';
 
 const page = ({ params }) => {
+    console.log(params);
+    
     return (
         <div>
-            <ProductDetails slug={params.slug} />
+            <ProductDetails productId={params.productId} />
             <Container className="space-y-10 pt-20">
                 <RelatedProduct />
             </Container>
