@@ -1,31 +1,13 @@
 "use client";
 
-/* eslint-disable @next/next/no-html-link-for-pages */
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import AuthLayout from "./AuthLayout";
 import { apiRequest } from "@/lib/api";
-import { useAuth } from "@/providers/AuthProvider";
-
-function normalize(v) {
-  return (v || "").trim();
-}
+import { setToken } from "@/lib/auth";
 
 export default function SignupPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const nextPath = useMemo(() => {
-    const n = searchParams.get("next");
-    if (!n) return "/account";
-    if (!n.startsWith("/")) return "/account";
-    return n;
-  }, [searchParams]);
-
-  const { customer, loading: authLoading, loginWithToken } = useAuth();
-
   const [show, setShow] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
@@ -36,30 +18,16 @@ export default function SignupPage() {
     agree: false,
   });
 
-  // If already logged in, go where you intended
-  useEffect(() => {
-    if (authLoading) return;
-    if (customer) router.replace(nextPath);
-  }, [customer, authLoading, router, nextPath]);
-
-  const canSubmit =
-    form.agree &&
-    normalize(form.name) &&
-    normalize(form.phone) &&
-    form.password.length >= 8;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canSubmit || submitting) return;
-
     setError("");
-    setSubmitting(true);
+    setLoading(true);
 
     try {
       const payload = {
-        name: normalize(form.name),
-        phone: normalize(form.phone),
-        email: normalize(form.email) || null,
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || null,
         password: form.password,
       };
 
@@ -68,14 +36,12 @@ export default function SignupPage() {
         body: payload,
       });
 
-      // ✅ sets token + fetches /me + updates global state
-      await loginWithToken(data.token);
-
-      router.replace(nextPath);
+      setToken(data.token);
+      window.location.href = "/account"; // change to your page
     } catch (err) {
-      setError(err?.message || "Signup failed");
+      setError(err.message || "Signup failed");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -101,7 +67,6 @@ export default function SignupPage() {
               className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
               placeholder="Your name"
               required
-              autoComplete="name"
             />
           </Field>
 
@@ -112,8 +77,6 @@ export default function SignupPage() {
               className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
               placeholder="01XXXXXXXXX"
               required
-              autoComplete="tel"
-              inputMode="tel"
             />
           </Field>
         </div>
@@ -124,8 +87,6 @@ export default function SignupPage() {
             onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
             className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
             placeholder="you@email.com"
-            autoComplete="email"
-            inputMode="email"
           />
         </Field>
 
@@ -139,7 +100,6 @@ export default function SignupPage() {
               placeholder="Create a strong password"
               required
               minLength={8}
-              autoComplete="new-password"
             />
             <button
               type="button"
@@ -149,7 +109,6 @@ export default function SignupPage() {
               {show ? "Hide" : "Show"}
             </button>
           </div>
-
           <div className="mt-2 text-xs text-slate-500">
             Use 8+ characters with a mix of letters and numbers.
           </div>
@@ -171,27 +130,18 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={!canSubmit || submitting}
+          disabled={loading}
           className={[
-            "w-full rounded-xl py-3 font-extrabold text-white flex items-center justify-center gap-2",
-            canSubmit && !submitting
-              ? "bg-emerald-600 hover:bg-emerald-700"
-              : "bg-emerald-300 cursor-not-allowed",
+            "w-full rounded-xl py-3 font-extrabold text-white",
+            loading ? "bg-emerald-300 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700",
           ].join(" ")}
         >
-          {submitting ? (
-            <>
-              <span className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              Creating...
-            </>
-          ) : (
-            "Create Account"
-          )}
+          {loading ? "Creating..." : "Create Account"}
         </button>
 
         <div className="text-sm text-slate-600 text-center">
           Already have an account?{" "}
-          <a href={`/login?next=${encodeURIComponent(nextPath)}`} className="font-extrabold text-emerald-700 hover:underline">
+          <a href="/login" className="font-extrabold text-emerald-700 hover:underline">
             Login
           </a>
         </div>

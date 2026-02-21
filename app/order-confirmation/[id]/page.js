@@ -1,9 +1,11 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Container from "@/components/ui/Container";
 import Link from "next/link";
+import { useCart } from "@/store/cartStore";
 
 function formatBDT(amount) {
   const n = Number(amount);
@@ -11,96 +13,99 @@ function formatBDT(amount) {
   return `৳ ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Image Component with fallback
+function ProductImage({ src, alt, className }) {
+  const [imageError, setImageError] = useState(false);
+  const [imageSrc, setImageSrc] = useState(src);
+
+  useEffect(() => {
+    setImageSrc(src);
+    setImageError(false);
+  }, [src]);
+
+  const handleError = () => {
+    setImageError(true);
+  };
+
+  if (imageError || !imageSrc) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-slate-100`}>
+        <span className="text-xs text-slate-400">No image</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={`${className} object-contain`}
+      onError={handleError}
+    />
+  );
+}
+
 export default function OrderSuccessPage() {
   const router = useRouter();
   const params = useParams();
   const orderId = params.id;
+  const { clearCart } = useCart();
   
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // Clear cart and fetch order details
   useEffect(() => {
     if (!orderId) {
       router.push('/');
       return;
     }
 
+    // Clear the cart when order success page loads
+    clearCart();
+    
     fetchOrderDetails();
-  }, [orderId, router]);
 
- const fetchOrderDetails = async () => {
-  setIsLoading(true);
-  setError("");
-  
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+    // Prevent page reload from showing cart
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem('orderPlaced', 'true');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Get token from your auth system
-    const token = localStorage.getItem('customer_token');
-    
-    if (!token) {
-      // If no token, redirect to login or show error
-      setError("Please log in to view this order");
-      setIsLoading(false);
-      return;
-    }
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [orderId]);
 
-    console.log("Fetching order with token:", token.substring(0, 20) + "...");
-    
-    const response = await fetch(`${baseUrl}/api/customer-auth/customer/orders/${orderId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      cache: 'no-store'
-    });
+  const fetchOrderDetails = async () => {
+    setIsLoading(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+      const response = await fetch(`${baseUrl}/api/orders/${orderId}`);
+      const data = await response.json();
 
-    console.log("Response status:", response.status);
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
-      
-      if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
-      } else if (response.status === 404) {
-        throw new Error("Order not found.");
-      } else {
-        throw new Error(`Server error: ${response.status}`);
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to fetch order details");
       }
-    }
 
-    const data = await response.json();
-    console.log("API Response:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || `Error ${response.status}`);
+      setOrder(data.order);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      setError(error.message || "Could not load order details");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to fetch order");
-    }
+  // Handle retry if loading fails
+  const handleRetry = () => {
+    setIsRedirecting(true);
+    fetchOrderDetails();
+  };
 
-    setOrder(data.order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    setError(error.message);
-    
-    // If unauthorized, redirect to login after a delay
-    if (error.message.includes("login") || error.message.includes("Session expired")) {
-      setTimeout(() => {
-        window.location.href = `/login?redirect=/order-confirmation/${orderId}`;
-      }, 2000);
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
   // Calculate totals from order data
   const subtotal = order ? Number(order.subtotal) : 0;
   const shippingFee = order ? Number(order.shipping) : 0;
@@ -131,10 +136,17 @@ export default function OrderSuccessPage() {
             <div className="text-6xl mb-4">😕</div>
             <h2 className="text-xl font-extrabold">Order Not Found</h2>
             <p className="mt-2 text-sm text-slate-600">{error || "We couldn't find your order details."}</p>
-            <div className="mt-6">
+            <div className="mt-6 flex gap-3 justify-center">
+              <button
+                onClick={handleRetry}
+                disabled={isRedirecting}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 transition-colors disabled:bg-gray-400"
+              >
+                {isRedirecting ? 'Loading...' : 'Try Again'}
+              </button>
               <Link
                 href="/"
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 inline-block transition-colors"
+                className="rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-extrabold px-6 py-3 transition-colors"
               >
                 Go to Homepage
               </Link>
@@ -209,26 +221,33 @@ export default function OrderSuccessPage() {
               </div>
 
               <div className="divide-y divide-gray-200">
-                {order.items?.map((item, idx) => (
-                  <div key={idx} className="p-6 flex items-start justify-between gap-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-4">
-                      <div className="h-16 w-20 rounded-xl bg-slate-100 border border-gray-300 flex items-center justify-center overflow-hidden">
-                        <span className="text-xs text-slate-500">No image</span>
+                {order.items?.map((item, idx) => {
+                  // Construct image URL if available
+                  const imageUrl = item.image || (item.product_id ? `${baseUrl}/storage/products/${item.product_id}/thumbnail.jpg` : null);
+                  
+                  return (
+                    <div key={idx} className="p-6 flex items-start justify-between gap-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        {/* <img
+                          src={imageUrl}
+                          alt={item.product_name}
+                          className="h-16 w-20 rounded-xl border border-gray-300"
+                        /> */}
+                        <div>
+                          <div className="font-extrabold">{item.product_name}</div>
+                          {item.sku && <div className="text-xs text-slate-500 mt-1">SKU: {item.sku}</div>}
+                          <div className="text-sm text-slate-600 mt-1">Qty: {item.qty}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-extrabold">{item.product_name}</div>
-                        {item.sku && <div className="text-xs text-slate-500 mt-1">SKU: {item.sku}</div>}
-                        <div className="text-sm text-slate-600 mt-1">Qty: {item.qty}</div>
-                      </div>
+                      <div className="font-extrabold">{formatBDT(Number(item.price) * Number(item.qty))}</div>
                     </div>
-                    <div className="font-extrabold">{formatBDT(Number(item.price) * Number(item.qty))}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Order Timeline */}
-            <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card">
+            {/* <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card">
               <h3 className="font-extrabold mb-4">Order Timeline</h3>
               <div className="space-y-3">
                 <TimelineItem 
@@ -262,7 +281,7 @@ export default function OrderSuccessPage() {
                   isLast={true}
                 />
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Right Column - Summary & Support */}
@@ -348,18 +367,32 @@ export default function OrderSuccessPage() {
             </div>
 
             {/* Save Order */}
-            <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card text-center">
+            {/* <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card text-center">
               <div className="font-extrabold mb-2">Save Order Details</div>
               <p className="text-xs text-slate-600 mb-3">Download or print your order confirmation</p>
               <div className="flex justify-center gap-2">
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
-                  📥 Download
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
+                <button 
+                  onClick={() => window.print()}
+                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors"
+                >
                   🖨️ Print
                 </button>
+                <button 
+                  onClick={() => {
+                    const orderData = JSON.stringify(order, null, 2);
+                    const blob = new Blob([orderData], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `order-${order.order_number || order.id}.json`;
+                    a.click();
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors"
+                >
+                  📥 Download
+                </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </Container>

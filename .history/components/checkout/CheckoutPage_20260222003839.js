@@ -1,34 +1,24 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Container from "@/components/ui/Container";
 import { useCart } from "@/store/cartStore";
-import { apiRequest } from "@/lib/api"; // ✅ uses your apiRequest helper
-import { getToken } from "@/lib/auth"; // ✅ should return customer token you stored in login
 
 function formatBDT(amount) {
-  const n = Number(amount || 0);
-  return `৳ ${n.toLocaleString("en-US")}`;
+  return `৳ ${amount.toLocaleString("en-US")}`;
 }
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, coupon: appliedCoupon, clearCart } = useCart();
-
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [orderSuccess, setOrderSuccess] = useState("");
   const [createdOrder, setCreatedOrder] = useState(null);
-
-  // ✅ logged in user state
-  const [meLoading, setMeLoading] = useState(true);
-  const [me, setMe] = useState(null);
 
   // Customer info form
   const [form, setForm] = useState({
@@ -49,8 +39,9 @@ export default function CheckoutPage() {
   });
   const [agree, setAgree] = useState(false);
 
+  // Calculate totals
   const subtotal = useMemo(() => {
-    return items.reduce((sum, it) => sum + Number(it.price || 0) * Number(it.qty || 1), 0);
+    return items.reduce((sum, it) => sum + (it.price * (it.qty || 1)), 0);
   }, [items]);
 
   const shipping = useMemo(() => {
@@ -60,7 +51,7 @@ export default function CheckoutPage() {
   }, [delivery]);
 
   const discount = useMemo(() => {
-    return Number(appliedCoupon?.discount || 0);
+    return appliedCoupon?.discount || 0;
   }, [appliedCoupon]);
 
   const total = useMemo(() => {
@@ -69,65 +60,14 @@ export default function CheckoutPage() {
 
   const isEmpty = items.length === 0;
 
-  // ✅ redirect if cart empty
+  // Redirect if cart is empty
   useEffect(() => {
-    if (isEmpty) router.push("/cart");
+    if (isEmpty) {
+      router.push("/cart");
+    }
   }, [isEmpty, router]);
 
-  // ✅ load logged-in customer from /api/customer-auth/me
-  useEffect(() => {
-    const run = async () => {
-      setMeLoading(true);
-      try {
-        const token = getToken?.();
-        if (!token) {
-          // not logged in => push to login with return url
-          router.push(`/login?next=/checkout`);
-          return;
-        }
-
-        // If your apiRequest already adds Authorization, just call it:
-        // Otherwise fallback to fetch with Bearer token.
-        let data;
-        try {
-          data = await apiRequest("/api/customer-auth/me", { method: "GET" });
-        } catch {
-          const res = await fetch(`${baseUrl}/api/customer-auth/me`, {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json?.message || "Failed to load profile");
-          data = json;
-        }
-
-        const customer = data?.customer || data?.data || data?.user || data;
-        setMe(customer);
-
-        // ✅ prefill checkout form from profile
-        setForm((p) => ({
-          ...p,
-          fullName: customer?.name || p.fullName,
-          phone: customer?.phone || p.phone,
-          email: customer?.email || p.email,
-          // optional prefill from saved addresses (if your customer has these)
-          city: p.city,
-          area: p.area,
-          address: p.address,
-        }));
-      } catch (e) {
-        // token invalid => go login
-        router.push(`/login?next=/checkout`);
-      } finally {
-        setMeLoading(false);
-      }
-    };
-
-    run();
-  }, [router]);
-
+  // Validation for each step
   const canGoNext = useMemo(() => {
     if (step === 1) {
       return (
@@ -140,11 +80,7 @@ export default function CheckoutPage() {
     if (step === 2) return !!delivery;
     if (step === 3) {
       if (payment === "cod") return agree;
-      return (
-        paymentDetails.senderNumber.trim() &&
-        paymentDetails.transactionId.trim() &&
-        agree
-      );
+      return paymentDetails.senderNumber.trim() && paymentDetails.transactionId.trim() && agree;
     }
     return true;
   }, [step, form, delivery, payment, paymentDetails, agree]);
@@ -152,103 +88,87 @@ export default function CheckoutPage() {
   const nextStep = () => setStep((s) => Math.min(3, s + 1));
   const prevStep = () => setStep((s) => Math.max(1, s - 1));
 
-  // ✅ Place order: no customer_id from frontend (backend uses token)
+  // Place order with payment included
   const placeOrder = async () => {
     setIsLoading(true);
     setOrderError("");
     setOrderSuccess("");
 
     try {
-      const token = getToken?.();
-      if (!token) {
-        router.push(`/login?next=/checkout`);
-        return;
-      }
-
+      // Prepare order data with payment included
       const orderData = {
+        customer_id: 1, // You'll need to get this from your auth system
         status: "processing",
         coupon_code: appliedCoupon?.code || null,
-        tax_rate_id: null,
+        tax_rate_id: 1,
         shipping: shipping,
         billing_address: `${form.address}, ${form.area}, ${form.city}`,
         shipping_address: `${form.address}, ${form.area}, ${form.city}`,
         note: form.note || null,
-
-        items: items.map((item) => ({
-          product_id: item.productId || item.id || null,
+        items: items.map(item => ({
+          product_id: item.productId || item.id,
           product_name: item.name,
-          sku: item.sku || (item.id ? `SKU-${item.id}` : null),
-          qty: Number(item.qty || 1),
-          price: Number(item.price || 0),
+          sku: item.sku || `SKU-${item.id}`,
+          qty: item.qty,
+          price: item.price
         })),
-
+        // Include payment in the main order
         payment: {
           method: payment,
           transaction_id: payment !== "cod" ? paymentDetails.transactionId : null,
-          amount_paid: payment === "cod" ? 0 : total,
-        },
+          amount_paid: payment === "cod" ? 0 : total
+        }
       };
 
-      // ✅ call protected checkout route (recommended: Route::post('/checkout')->middleware('auth:customer'))
-      let data;
-      try {
-        data = await apiRequest("/api/checkout", {
-          method: "POST",
-          body: orderData,
-        });
-      } catch {
-        const res = await fetch(`${baseUrl}/api/checkout`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(orderData),
-        });
+      console.log("Sending order data:", orderData);
 
-        const json = await res.json();
-        if (!res.ok) {
-          if (json?.errors) {
-            const msgs = Object.values(json.errors).flat().join(", ");
-            throw new Error(msgs || json?.message || "Failed to create order");
-          }
-          throw new Error(json?.message || "Failed to create order");
+      const response = await fetch(`${baseUrl}/api/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      const data = await response.json();
+      console.log("Order response:", data);
+
+      if (!response.ok) {
+        // Handle validation errors
+        if (data.errors) {
+          const errorMessages = Object.values(data.errors).flat().join(', ');
+          throw new Error(errorMessages || data.message || "Failed to create order");
         }
-        data = json;
+        throw new Error(data.message || "Failed to create order");
       }
 
-      const order = data?.order || data?.data || data;
-      const orderId = order?.id || order?.order_id;
+      // Get the created order
+      const order = data.order || data.data || data;
+      const orderId = order.id || order.order_id;
 
+      // Success!
       setOrderSuccess("Order placed successfully!");
       setCreatedOrder(order);
-
+      
+      // Clear cart
       clearCart();
+      
+      // Redirect to confirmation page
+      setTimeout(() => {
+        router.push(`/order-confirmation/${orderId}`);
+      }, 2000);
 
-      router.push(`/order-confirmation/${orderId}`);
     } catch (error) {
-      setOrderError(error?.message || "Failed to place order. Please try again.");
+      console.error("Error placing order:", error);
+      setOrderError(error.message || "Failed to place order. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isEmpty) return null;
-
-  if (meLoading) {
-    return (
-      <div className="bg-slate-50 min-h-screen">
-        <Container className="py-10">
-          <div className="rounded-2xl border border-gray-300 bg-white p-6">
-            <div className="font-extrabold text-lg">Loading checkout…</div>
-            <div className="text-sm text-slate-600 mt-1">
-              Checking your login session.
-            </div>
-          </div>
-        </Container>
-      </div>
-    );
+  if (isEmpty) {
+    return null; // Will redirect
   }
 
   return (
@@ -261,11 +181,6 @@ export default function CheckoutPage() {
             <p className="text-sm text-slate-600 mt-1">
               Complete your order securely. Fast delivery and easy returns.
             </p>
-            {me?.name ? (
-              <div className="mt-2 text-xs text-slate-500">
-                Logged in as <span className="font-semibold">{me.name}</span>
-              </div>
-            ) : null}
           </div>
 
           <a
@@ -281,38 +196,36 @@ export default function CheckoutPage() {
           <StepBar step={step} />
         </div>
 
-        {/* Error/Success */}
+        {/* Error/Success Messages */}
         {orderError && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
             {orderError}
           </div>
         )}
-
+        
         {orderSuccess && (
           <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700">
-            {orderSuccess}
+            {orderSuccess} Redirecting to confirmation...
           </div>
         )}
 
         {/* Layout */}
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
-          {/* LEFT */}
+          {/* LEFT: Forms */}
           <div className="lg:col-span-2 space-y-4">
+            {/* Step 1: Customer Information */}
             {step === 1 && (
-              <Card
-                title="Customer & Shipping Information"
-                subtitle="Please enter accurate details for delivery."
-              >
+              <Card title="Customer & Shipping Information" subtitle="Please enter accurate details for delivery.">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Input
-                    label="Full Name"
+                    label="Full Name *"
                     placeholder="Your name"
                     value={form.fullName}
                     onChange={(v) => setForm((p) => ({ ...p, fullName: v }))}
                     required
                   />
                   <Input
-                    label="Phone"
+                    label="Phone *"
                     placeholder="01XXXXXXXXX"
                     value={form.phone}
                     onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
@@ -328,7 +241,7 @@ export default function CheckoutPage() {
                   />
 
                   <Select
-                    label="City"
+                    label="City *"
                     value={form.city}
                     onChange={(v) => setForm((p) => ({ ...p, city: v }))}
                     options={[
@@ -344,7 +257,7 @@ export default function CheckoutPage() {
                   />
 
                   <Input
-                    label="Area/Thana"
+                    label="Area/Thana *"
                     placeholder="e.g. Mirpur, Dhanmondi"
                     value={form.area}
                     onChange={(v) => setForm((p) => ({ ...p, area: v }))}
@@ -352,7 +265,7 @@ export default function CheckoutPage() {
                   />
 
                   <Input
-                    label="Address"
+                    label="Address *"
                     placeholder="House, Road, Block..."
                     value={form.address}
                     onChange={(v) => setForm((p) => ({ ...p, address: v }))}
@@ -371,11 +284,9 @@ export default function CheckoutPage() {
               </Card>
             )}
 
+            {/* Step 2: Delivery Method */}
             {step === 2 && (
-              <Card
-                title="Delivery Method"
-                subtitle="Choose how you want to receive your order."
-              >
+              <Card title="Delivery Method" subtitle="Choose how you want to receive your order.">
                 <div className="grid md:grid-cols-3 gap-4">
                   <RadioCard
                     active={delivery === "inside_dhaka"}
@@ -403,13 +314,13 @@ export default function CheckoutPage() {
                 <div className="mt-4 rounded-xl border border-gray-300 bg-slate-50 p-4 text-sm text-slate-700">
                   <div className="font-semibold">Delivery Disclaimer</div>
                   <div className="mt-1 text-slate-600">
-                    Delivery time may vary depending on location, traffic, and
-                    product availability.
+                    Delivery time may vary depending on location, traffic, and product availability.
                   </div>
                 </div>
               </Card>
             )}
 
+            {/* Step 3: Payment */}
             {step === 3 && (
               <Card title="Payment" subtitle="Select a payment method and confirm order.">
                 <div className="grid md:grid-cols-2 gap-4">
@@ -446,42 +357,36 @@ export default function CheckoutPage() {
                   />
                 </div>
 
+                {/* Payment Details for Digital Payments */}
                 {payment !== "cod" && (
                   <div className="mt-4 rounded-xl border border-gray-300 bg-white p-4">
                     <div className="text-sm font-extrabold mb-3">Payment Details</div>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Input
-                        label="Sender Number"
+                        label="Sender Number *"
                         placeholder="01XXXXXXXXX"
                         value={paymentDetails.senderNumber}
-                        onChange={(v) =>
-                          setPaymentDetails((p) => ({ ...p, senderNumber: v }))
-                        }
+                        onChange={(v) => setPaymentDetails(p => ({ ...p, senderNumber: v }))}
                         required
                       />
                       <Input
-                        label="Transaction ID"
+                        label="Transaction ID *"
                         placeholder="TXN123..."
                         value={paymentDetails.transactionId}
-                        onChange={(v) =>
-                          setPaymentDetails((p) => ({ ...p, transactionId: v }))
-                        }
+                        onChange={(v) => setPaymentDetails(p => ({ ...p, transactionId: v }))}
                         required
                       />
                     </div>
-
                     <div className="mt-3 p-3 bg-amber-50 rounded-lg text-sm">
-                      <div className="font-semibold">
-                        Amount to pay: {formatBDT(total)}
-                      </div>
+                      <div className="font-semibold">Amount to pay: {formatBDT(total)}</div>
                       <p className="text-xs text-slate-600 mt-1">
-                        Send this amount to our bKash/Nagad/Rocket number:
-                        01XXXXXXXXX
+                        Send this amount to our bKash/Nagad/Rocket number: 01XXXXXXXXX
                       </p>
                     </div>
                   </div>
                 )}
 
+                {/* Terms Agreement */}
                 <div className="mt-4 flex items-start gap-3">
                   <input
                     id="agree"
@@ -539,7 +444,7 @@ export default function CheckoutPage() {
                 >
                   {isLoading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       Processing...
                     </>
                   ) : (
@@ -550,32 +455,33 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT: Order Summary */}
           <div className="lg:sticky lg:top-6 h-fit space-y-4">
             <div className="rounded-2xl border border-gray-300 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="font-extrabold">Order Summary</div>
                 <span className="text-xs rounded-full bg-slate-100 px-2 py-1">
-                  {items.length} {items.length === 1 ? "item" : "items"}
+                  {items.length} {items.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
               <div className="mt-4 space-y-3 max-h-60 overflow-y-auto pr-2">
                 {items.map((i) => (
-                  <div key={i.lineId || `${i.id}-${i.qty}`} className="flex items-start justify-between gap-3">
+                  <div key={i.lineId} className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-semibold text-sm">{i.name}</div>
                       <div className="text-xs text-slate-500">
-                        {i.variantLabel ? `${i.variantLabel} • ` : ""}Qty {i.qty}
+                        {i.variantLabel && `${i.variantLabel} • `}Qty {i.qty}
                       </div>
                     </div>
                     <div className="font-bold text-sm">
-                      {formatBDT(Number(i.price || 0) * Number(i.qty || 1))}
+                      {formatBDT(i.price * i.qty)}
                     </div>
                   </div>
                 ))}
               </div>
 
+              {/* Coupon Applied */}
               {appliedCoupon && (
                 <div className="mt-3 p-2 bg-emerald-50 rounded-lg">
                   <span className="text-xs font-semibold text-emerald-700">
@@ -586,19 +492,20 @@ export default function CheckoutPage() {
 
               <div className="mt-4 border-t border-gray-300 pt-4 space-y-2 text-sm">
                 <Line label="Subtotal" value={formatBDT(subtotal)} />
-                <Line label="Shipping" value={shipping === 0 ? "Free" : formatBDT(shipping)} />
+                <Line
+                  label="Shipping"
+                  value={shipping === 0 ? "Free" : formatBDT(shipping)}
+                />
                 {discount > 0 && (
-                  <Line
-                    label="Discount"
+                  <Line 
+                    label="Discount" 
                     value={`-${formatBDT(discount)}`}
                     valueClass="text-emerald-700"
                   />
                 )}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-300">
                   <div className="font-extrabold text-base">Total</div>
-                  <div className="font-extrabold text-xl text-red-800">
-                    {formatBDT(total)}
-                  </div>
+                  <div className="font-extrabold text-xl text-red-800">{formatBDT(total)}</div>
                 </div>
               </div>
 
@@ -614,6 +521,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Trust Strip */}
             <div className="rounded-2xl border border-gray-300 bg-white p-5 shadow-sm">
               <div className="font-extrabold text-center mb-3">Why checkout here?</div>
               <div className="grid grid-cols-3 gap-3 text-center">
@@ -623,6 +531,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Support Info */}
             <div className="rounded-2xl border border-gray-300 bg-white p-4 shadow-sm text-center">
               <div className="text-sm font-semibold">Need help?</div>
               <div className="text-xs text-slate-600 mt-1">
@@ -654,7 +563,9 @@ function StepBar({ step }) {
             <div
               className={[
                 "h-9 w-9 rounded-full flex items-center justify-center font-extrabold transition-colors",
-                step >= s.id ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500",
+                step >= s.id
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-500",
               ].join(" ")}
             >
               {s.id}
@@ -682,7 +593,7 @@ function Card({ title, subtitle, children }) {
     <div className="rounded-2xl border border-gray-300 bg-white shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-300 bg-gray-50">
         <div className="font-extrabold">{title}</div>
-        {subtitle ? <div className="text-sm text-slate-600 mt-1">{subtitle}</div> : null}
+        {subtitle && <div className="text-sm text-slate-600 mt-1">{subtitle}</div>}
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -693,7 +604,7 @@ function Input({ label, value, onChange, placeholder, type = "text", required = 
   return (
     <div>
       <label className="text-sm font-semibold text-slate-700">
-        {label} {required ? <span className="text-red-500">*</span> : null}
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
       <input
         type={type}
@@ -747,9 +658,10 @@ function RadioCard({ active, onClick, title, desc, price }) {
       onClick={onClick}
       className={[
         "text-left rounded-2xl border p-4 transition-all",
-        active ? "border-emerald-600 ring-2 ring-emerald-200 bg-emerald-50" : "border-gray-300 hover:bg-slate-50",
+        active 
+          ? "border-emerald-600 ring-2 ring-emerald-200 bg-emerald-50" 
+          : "border-gray-300 hover:bg-slate-50",
       ].join(" ")}
-      type="button"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -768,23 +680,24 @@ function PaymentCard({ active, onClick, title, desc, badge, icon }) {
       onClick={onClick}
       className={[
         "text-left rounded-2xl border p-4 transition-all",
-        active ? "border-emerald-600 ring-2 ring-emerald-200 bg-emerald-50" : "border-gray-300 hover:bg-slate-50",
+        active 
+          ? "border-emerald-600 ring-2 ring-emerald-200 bg-emerald-50" 
+          : "border-gray-300 hover:bg-slate-50",
       ].join(" ")}
-      type="button"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          {icon ? <span className="text-xl">{icon}</span> : null}
+          {icon && <span className="text-xl">{icon}</span>}
           <div>
             <div className="font-extrabold">{title}</div>
             <div className="text-sm text-slate-600 mt-1">{desc}</div>
           </div>
         </div>
-        {badge ? (
+        {badge && (
           <span className="text-xs rounded-full bg-amber-100 text-amber-800 px-2 py-1 font-bold">
             {badge}
           </span>
-        ) : null}
+        )}
       </div>
     </button>
   );

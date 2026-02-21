@@ -2,15 +2,8 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Container from "@/components/ui/Container";
-import {
-  Heart,
-  ShoppingCart,
-  SlidersHorizontal,
-  X,
-  RotateCw,
-} from "lucide-react";
+import { Heart, ShoppingCart, SlidersHorizontal, X, RotateCw } from "lucide-react";
 import Link from "next/link";
-import { useCart } from "@/store/cartStore";
 
 /* ===================== helpers ===================== */
 
@@ -55,8 +48,7 @@ function priceForSimple(p) {
   const regular = p?.regular_price != null ? Number(p.regular_price) : null;
 
   if (sale != null && !Number.isNaN(sale)) return { value: sale, regular };
-  if (regular != null && !Number.isNaN(regular))
-    return { value: regular, regular: null };
+  if (regular != null && !Number.isNaN(regular)) return { value: regular, regular: null };
   return { value: null, regular: null };
 }
 
@@ -65,8 +57,7 @@ function priceForVariant(v) {
   const regular = v?.regular_price != null ? Number(v.regular_price) : null;
 
   if (sale != null && !Number.isNaN(sale)) return { value: sale, regular };
-  if (regular != null && !Number.isNaN(regular))
-    return { value: regular, regular: null };
+  if (regular != null && !Number.isNaN(regular)) return { value: regular, regular: null };
   return { value: null, regular: null };
 }
 
@@ -108,80 +99,78 @@ export default function CategoryPage({ categoryId }) {
   const [selectedSizes, setSelectedSizes] = useState([]);
 
   const MAX_RETRIES = 3;
-  const RETRY_DELAY = 2000;
-  const TIMEOUT_DURATION = 12000;
+  const RETRY_DELAY = 2000; // 2 seconds
+  const TIMEOUT_DURATION = 12000; // 12 seconds
 
-  const fetchCategoryData = useCallback(
-    async (isRetryAttempt = false) => {
-      if (!baseUrl) {
-        setError(
-          "NEXT_PUBLIC_API_BASE_URL missing. Restart dev server after setting .env.local"
-        );
-        setLoading(false);
-        return;
+  const fetchCategoryData = useCallback(async (isRetryAttempt = false) => {
+    if (!baseUrl) {
+      setError("NEXT_PUBLIC_API_BASE_URL missing. Restart dev server after setting .env.local");
+      setLoading(false);
+      return;
+    }
+    if (!categoryId && categoryId !== 0) {
+      setError("categoryId missing from route params");
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+
+    try {
+      if (isRetryAttempt) {
+        setIsRetrying(true);
       }
-      if (!categoryId && categoryId !== 0) {
-        setError("categoryId missing from route params");
-        setLoading(false);
-        return;
+      setLoading(true);
+      setError("");
+
+      const url = `${baseUrl}/api/categories/${categoryId}/products`;
+      const res = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal
+      });
+
+      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+
+      const data = await res.json();
+      setCategory(data?.category || null);
+      setProducts(Array.isArray(data?.products) ? data.products : []);
+
+      // Reset retry count on success
+      setRetryCount(0);
+      setError("");
+    } catch (e) {
+      const errorMessage = e?.name === "AbortError"
+        ? "Request timeout. The server is taking too long to respond."
+        : e.message;
+
+      setError(errorMessage);
+      setCategory(null);
+      setProducts([]);
+
+      // Auto retry logic
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, RETRY_DELAY);
       }
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
+      setIsRetrying(false);
+    }
+  }, [baseUrl, categoryId, retryCount]);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
-
-      try {
-        if (isRetryAttempt) setIsRetrying(true);
-
-        setLoading(true);
-        setError("");
-
-        const url = `${baseUrl}/api/categories/${categoryId}/products`;
-        const res = await fetch(url, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!res.ok)
-          throw new Error(`API error: ${res.status} ${res.statusText}`);
-
-        const data = await res.json();
-        setCategory(data?.category || null);
-        setProducts(Array.isArray(data?.products) ? data.products : []);
-
-        setRetryCount(0);
-        setError("");
-      } catch (e) {
-        const errorMessage =
-          e?.name === "AbortError"
-            ? "Request timeout. The server is taking too long to respond."
-            : e.message;
-
-        setError(errorMessage);
-        setCategory(null);
-        setProducts([]);
-
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(() => {
-            setRetryCount((prev) => prev + 1);
-          }, RETRY_DELAY);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        setLoading(false);
-        setIsRetrying(false);
-      }
-    },
-    [baseUrl, categoryId, retryCount]
-  );
-
+  // Initial fetch and retry on retryCount change
   useEffect(() => {
     fetchCategoryData(retryCount > 0);
   }, [fetchCategoryData, retryCount]);
 
   const handleManualRetry = () => {
-    setRetryCount((prev) => prev + 1);
+    setRetryCount(prev => prev + 1);
   };
 
+  // sidebar options
   const allBrands = useMemo(() => {
     const list = products.map(getBrandName).filter(Boolean);
     return Array.from(new Set(list));
@@ -197,6 +186,7 @@ export default function CategoryPage({ categoryId }) {
     return Array.from(new Set(sizes));
   }, [products]);
 
+  // clear filters
   const clearAll = () => {
     setPriceMax(500000);
     setType("all");
@@ -205,11 +195,14 @@ export default function CategoryPage({ categoryId }) {
     setSelectedSizes([]);
   };
 
+  // apply filtering + sorting
   const filteredProducts = useMemo(() => {
     let list = [...products];
 
+    // type
     if (type !== "all") list = list.filter((p) => p.product_type === type);
 
+    // stock
     if (inStockOnly) {
       list = list.filter((p) => {
         if (p.product_type === "simple") return (p.stock ?? 0) > 0;
@@ -217,19 +210,20 @@ export default function CategoryPage({ categoryId }) {
       });
     }
 
+    // brand
     if (selectedBrands.length) {
       list = list.filter((p) => selectedBrands.includes(getBrandName(p)));
     }
 
+    // size (variable only)
     if (selectedSizes.length) {
       list = list.filter((p) => {
         if (p.product_type !== "variable") return false;
-        return (p.variants || []).some((v) =>
-          selectedSizes.includes(v?.attributes?.Size)
-        );
+        return (p.variants || []).some((v) => selectedSizes.includes(v?.attributes?.Size));
       });
     }
 
+    // price max
     list = list.filter((p) => {
       if (p.product_type === "simple") {
         const pr = priceForSimple(p).value;
@@ -239,30 +233,18 @@ export default function CategoryPage({ categoryId }) {
       return min == null ? true : min <= priceMax;
     });
 
+    // sorting
     if (sort === "price_low") {
       list.sort((a, b) => {
-        const av =
-          a.product_type === "simple"
-            ? priceForSimple(a).value ?? 1e18
-            : rangeForVariable(a).min ?? 1e18;
-        const bv =
-          b.product_type === "simple"
-            ? priceForSimple(b).value ?? 1e18
-            : rangeForVariable(b).min ?? 1e18;
+        const av = a.product_type === "simple" ? priceForSimple(a).value ?? 1e18 : rangeForVariable(a).min ?? 1e18;
+        const bv = b.product_type === "simple" ? priceForSimple(b).value ?? 1e18 : rangeForVariable(b).min ?? 1e18;
         return av - bv;
       });
     }
-
     if (sort === "price_high") {
       list.sort((a, b) => {
-        const av =
-          a.product_type === "simple"
-            ? priceForSimple(a).value ?? -1
-            : rangeForVariable(a).max ?? -1;
-        const bv =
-          b.product_type === "simple"
-            ? priceForSimple(b).value ?? -1
-            : rangeForVariable(b).max ?? -1;
+        const av = a.product_type === "simple" ? priceForSimple(a).value ?? -1 : rangeForVariable(a).max ?? -1;
+        const bv = b.product_type === "simple" ? priceForSimple(b).value ?? -1 : rangeForVariable(b).max ?? -1;
         return bv - av;
       });
     }
@@ -270,6 +252,60 @@ export default function CategoryPage({ categoryId }) {
     return list;
   }, [products, type, inStockOnly, selectedBrands, selectedSizes, priceMax, sort]);
 
+  // add to cart handler (placeholder for now)
+  const handleAddToCart = () => {
+    if (!product) return;
+
+    const isVariable = product?.product_type === "variable";
+    const v = isVariable
+      ? (product.variants || []).find((x) => x.id === selectedVariantId)
+      : null;
+
+    // pick price
+    const price = isVariable
+      ? (v?.sale_price ?? v?.regular_price)
+      : (product?.sale_price ?? product?.regular_price);
+
+    const oldPrice = isVariable
+      ? (v?.regular_price && v?.sale_price ? v.regular_price : null)
+      : (product?.regular_price && product?.sale_price ? product.regular_price : null);
+
+    const variantLabel = isVariable
+      ? (() => {
+        const attrs = v?.attributes || {};
+        const keys = Object.keys(attrs);
+        if (!keys.length) return `Variant #${v?.id}`;
+        return keys.map((k) => `${k}: ${attrs[k]}`).join(", ");
+      })()
+      : product?.variant ?? "";
+
+    const image =
+      (isVariable && v?.image_path ? `${baseUrl}/storage/${v.image_path}` : "") ||
+      getProductImage(product, baseUrl) ||
+      "";
+
+    addItem(
+      {
+        productId: product.id,
+        variantId: v?.id ?? null,
+        name: product.name,
+        category: product?.category?.name || product?.category?.slug || "",
+        variantLabel,
+        image,
+        price,
+        oldPrice,
+        stock: isVariable ? v?.stock : product?.stock,
+        attrs: isVariable ? (v?.attributes || null) : null,
+      },
+      1
+    );
+
+    // Optional: route to cart
+    // router.push("/cart");
+    alert("Added to cart ✅");
+  };
+
+  // Full error state (no data loaded)
   if (error && !products.length && !loading) {
     return (
       <div className="bg-slate-50 min-h-screen">
@@ -278,9 +314,7 @@ export default function CategoryPage({ categoryId }) {
             <div className="text-red-600 mb-4">
               <span className="text-5xl">⚠️</span>
             </div>
-            <h3 className="text-lg font-semibold text-red-700 mb-2">
-              Failed to Load Category
-            </h3>
+            <h3 className="text-lg font-semibold text-red-700 mb-2">Failed to Load Category</h3>
             <p className="text-sm text-red-600 mb-4">{error}</p>
 
             <div className="space-y-3">
@@ -289,10 +323,8 @@ export default function CategoryPage({ categoryId }) {
                 disabled={isRetrying}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
-                <RotateCw
-                  className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`}
-                />
-                {isRetrying ? "Retrying..." : "Try Again"}
+                <RotateCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                {isRetrying ? 'Retrying...' : 'Try Again'}
               </button>
 
               {retryCount > 0 && retryCount < MAX_RETRIES && (
@@ -316,6 +348,7 @@ export default function CategoryPage({ categoryId }) {
   return (
     <div className="bg-slate-50 min-h-screen">
       <Container className="py-8">
+        {/* Header row */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <div className="text-xs text-slate-500">Category</div>
@@ -323,9 +356,7 @@ export default function CategoryPage({ categoryId }) {
               {category?.name || "Category"}
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              {loading
-                ? "Loading..."
-                : `${filteredProducts.length} products found`}
+              {loading ? "Loading..." : `${filteredProducts.length} products found`}
             </p>
           </div>
 
@@ -351,6 +382,7 @@ export default function CategoryPage({ categoryId }) {
           </div>
         </div>
 
+        {/* Warning banner for partial data with error */}
         {error && products.length > 0 && (
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -364,15 +396,14 @@ export default function CategoryPage({ categoryId }) {
               disabled={isRetrying}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition disabled:opacity-50"
             >
-              <RotateCw
-                className={`w-3 h-3 ${isRetrying ? "animate-spin" : ""}`}
-              />
+              <RotateCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
               Retry
             </button>
           </div>
         )}
 
         <div className="mt-6 grid lg:grid-cols-4 gap-6">
+          {/* Desktop Sidebar */}
           <SidebarFilters
             priceMax={priceMax}
             setPriceMax={setPriceMax}
@@ -390,14 +421,12 @@ export default function CategoryPage({ categoryId }) {
             disabled={loading}
           />
 
+          {/* Products */}
           <section className="lg:col-span-3">
             {loading ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl soft-card overflow-hidden"
-                  >
+                  <div key={i} className="bg-white rounded-2xl soft-card overflow-hidden">
                     <div className="relative p-5 bg-[#FAF8F6]">
                       <div className="h-44 bg-white/60 rounded-xl animate-pulse" />
                     </div>
@@ -410,33 +439,32 @@ export default function CategoryPage({ categoryId }) {
                   </div>
                 ))}
               </div>
-            ) : !filteredProducts.length ? (
-              <div className="bg-white border border-gray-300 rounded-2xl p-6 text-sm text-slate-600">
-                No products match your filters.
-                <button
-                  onClick={clearAll}
-                  className="ml-2 text-emerald-700 font-bold hover:underline"
-                >
-                  Reset filters
-                </button>
-              </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {filteredProducts.map((p) => (
-                  <CategoryProductCard key={p.id} p={p} baseUrl={baseUrl} />
-                ))}
-              </div>
+              <>
+                {!filteredProducts.length ? (
+                  <div className="bg-white border border-gray-300 rounded-2xl p-6 text-sm text-slate-600">
+                    No products match your filters.
+                    <button onClick={clearAll} className="ml-2 text-emerald-700 font-bold hover:underline">
+                      Reset filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {filteredProducts.map((p) => (
+                      <CategoryProductCard key={p.id} p={p} baseUrl={baseUrl} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
       </Container>
 
+      {/* Mobile Filter Drawer */}
       {openFilter ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setOpenFilter(false)}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpenFilter(false)} />
           <div className="absolute right-0 top-0 h-full w-[92%] max-w-md bg-white border-l border-gray-300 p-4 overflow-y-auto">
             <div className="flex items-center justify-between">
               <div className="font-extrabold text-lg">Filters</div>
@@ -523,13 +551,12 @@ function SidebarFiltersContent({
 }) {
   const toggle = (arr, value, setter) => {
     if (disabled) return;
-    setter((prev) =>
-      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]
-    );
+    setter((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
   };
 
   return (
     <div className="space-y-6">
+      {/* Type */}
       <div>
         <div className="font-extrabold text-sm mb-2">Product Type</div>
         <div className="grid grid-cols-3 gap-2">
@@ -556,12 +583,11 @@ function SidebarFiltersContent({
         </div>
       </div>
 
+      {/* Stock */}
       <div className="flex items-center justify-between">
         <div>
           <div className="font-extrabold text-sm">In Stock Only</div>
-          <div className="text-xs text-slate-500 mt-0.5">
-            Hide out-of-stock products
-          </div>
+          <div className="text-xs text-slate-500 mt-0.5">Hide out-of-stock products</div>
         </div>
         <button
           onClick={() => !disabled && setInStockOnly((x) => !x)}
@@ -569,9 +595,7 @@ function SidebarFiltersContent({
           className={[
             "w-12 h-7 rounded-full border transition relative",
             disabled && "opacity-50 cursor-not-allowed",
-            inStockOnly
-              ? "bg-[#008159] border-[#008159]"
-              : "bg-slate-200 border-slate-300",
+            inStockOnly ? "bg-[#008159] border-[#008159]" : "bg-slate-200 border-slate-300",
           ].join(" ")}
         >
           <span
@@ -583,34 +607,29 @@ function SidebarFiltersContent({
         </button>
       </div>
 
+      {/* Price */}
       <div>
         <div className="font-extrabold text-sm">Price</div>
-        <div className="text-xs text-slate-500 mt-1">
-          Max: {formatBDT(priceMax)}
-        </div>
+        <div className="text-xs text-slate-500 mt-1">Max: {formatBDT(priceMax)}</div>
         <input
           type="range"
           min="100"
           max="500000"
           step="50"
           value={priceMax}
-          onChange={(e) =>
-            !disabled && setPriceMax(parseInt(e.target.value, 10))
-          }
+          onChange={(e) => !disabled && setPriceMax(parseInt(e.target.value, 10))}
           disabled={disabled}
           className={["mt-3 w-full", disabled && "opacity-50 cursor-not-allowed"].join(" ")}
         />
       </div>
 
+      {/* Brands */}
       {allBrands.length ? (
         <div>
           <div className="font-extrabold text-sm">Brand</div>
           <div className="mt-3 space-y-2 max-h-44 overflow-auto pr-1">
             {allBrands.map((b) => (
-              <label
-                key={b}
-                className={["flex items-center gap-2 text-sm", disabled && "opacity-50"].join(" ")}
-              >
+              <label key={b} className={["flex items-center gap-2 text-sm", disabled && "opacity-50"].join(" ")}>
                 <input
                   type="checkbox"
                   checked={selectedBrands.includes(b)}
@@ -625,6 +644,7 @@ function SidebarFiltersContent({
         </div>
       ) : null}
 
+      {/* Sizes */}
       {allSizes.length ? (
         <div>
           <div className="font-extrabold text-sm">Size</div>
@@ -649,12 +669,11 @@ function SidebarFiltersContent({
               );
             })}
           </div>
-          <div className="mt-2 text-xs text-slate-500">
-            Based on variant attributes
-          </div>
+          <div className="mt-2 text-xs text-slate-500">Based on variant attributes</div>
         </div>
       ) : null}
 
+      {/* Clear */}
       <button
         onClick={onClear}
         disabled={disabled}
@@ -666,11 +685,9 @@ function SidebarFiltersContent({
   );
 }
 
-/* ===================== Product Card ===================== */
+/* ===================== Product Card (FreshDrops style) ===================== */
 
 function CategoryProductCard({ p, baseUrl }) {
-  const { addItem } = useCart();
-
   const isVariable = p.product_type === "variable";
   const [selectedVariantId, setSelectedVariantId] = useState(
     isVariable && p.variants?.length ? p.variants[0].id : null
@@ -681,10 +698,9 @@ function CategoryProductCard({ p, baseUrl }) {
     return (p.variants || []).find((v) => v.id === selectedVariantId) || null;
   }, [isVariable, p, selectedVariantId]);
 
-  const imgSrc =
-    isVariable && selectedVariant?.image_path
-      ? getVariantImage(selectedVariant, baseUrl)
-      : getProductImage(p, baseUrl);
+  const imgSrc = isVariable && selectedVariant?.image_path
+    ? getVariantImage(selectedVariant, baseUrl)
+    : getProductImage(p, baseUrl);
 
   const shortText = stripHtml(p.short_description) || stripHtml(p.description);
 
@@ -695,9 +711,7 @@ function CategoryProductCard({ p, baseUrl }) {
         <div className="mt-2 font-extrabold">
           {pr.value == null ? "৳ —" : formatBDT(pr.value)}
           {pr.regular != null && pr.value != null && pr.value < pr.regular ? (
-            <span className="ml-2 text-sm text-slate-500 line-through">
-              {formatBDT(pr.regular)}
-            </span>
+            <span className="ml-2 text-sm text-slate-500 line-through">{formatBDT(pr.regular)}</span>
           ) : null}
         </div>
       );
@@ -709,9 +723,7 @@ function CategoryProductCard({ p, baseUrl }) {
         <div className="mt-2 font-extrabold">
           {pr.value == null ? "৳ —" : formatBDT(pr.value)}
           {pr.regular != null && pr.value != null && pr.value < pr.regular ? (
-            <span className="ml-2 text-sm text-slate-500 line-through">
-              {formatBDT(pr.regular)}
-            </span>
+            <span className="ml-2 text-sm text-slate-500 line-through">{formatBDT(pr.regular)}</span>
           ) : null}
         </div>
       );
@@ -725,66 +737,11 @@ function CategoryProductCard({ p, baseUrl }) {
     );
   }, [isVariable, p, selectedVariant]);
 
-  // ✅ add to cart inside card (scope fixed)
-  const handleAddToCart = (e) => {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
-
-    const v = isVariable ? selectedVariant : null;
-
-    const price = isVariable
-      ? (v?.sale_price ?? v?.regular_price)
-      : (p?.sale_price ?? p?.regular_price);
-
-    const oldPrice = isVariable
-      ? (v?.regular_price && v?.sale_price ? v.regular_price : null)
-      : (p?.regular_price && p?.sale_price ? p.regular_price : null);
-
-    const variantLabel = isVariable
-      ? (() => {
-          const attrs = v?.attributes || {};
-          const keys = Object.keys(attrs);
-          if (!keys.length) return `Variant #${v?.id}`;
-          return keys.map((k) => `${k}: ${attrs[k]}`).join(", ");
-        })()
-      : (p?.variant ?? "");
-
-    const image =
-      (isVariable && v?.image_path ? `${baseUrl}/storage/${v.image_path}` : "") ||
-      getProductImage(p, baseUrl) ||
-      "";
-
-    addItem(
-      {
-        productId: p.id,
-        variantId: v?.id ?? null,
-        name: p.name,
-        category: p?.category?.name || p?.category?.slug || "",
-        variantLabel,
-        image,
-        price,
-        oldPrice,
-        stock: isVariable ? v?.stock : p?.stock,
-        attrs: isVariable ? (v?.attributes || null) : null,
-      },
-      1
-    );
-
-    alert("Added to cart ✅");
-  };
-
   return (
-    <div className="bg-white rounded-2xl soft-card overflow-hidden h-full flex flex-col">
-      <Link href={`/product/${p.id}`} className="block">
+    <>
+      <Link href={`/product/${p.id}`} className="bg-white rounded-2xl soft-card overflow-hidden h-full flex flex-col">
         <div className="relative p-5 bg-[#FAF8F6]">
-          <button
-            type="button"
-            className="cursor-pointer absolute right-4 top-4 w-9 h-9 rounded-full bg-white border border-gray-300 flex items-center justify-center"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
+          <button className="cursor-pointer absolute right-4 top-4 w-9 h-9 rounded-full bg-white border border-gray-300 flex items-center justify-center">
             <Heart className="w-5 h-5" />
           </button>
 
@@ -802,12 +759,9 @@ function CategoryProductCard({ p, baseUrl }) {
           </div>
         </div>
       </Link>
-
       <div className="p-4 flex-1 flex flex-col">
         <div className="font-bold leading-snug line-clamp-2">{p.name}</div>
-        <div className="text-sm text-slate-500 mt-1 line-clamp-2">
-          {shortText || `SKU: ${p.sku || "—"}`}
-        </div>
+        <div className="text-sm text-slate-500 mt-1 line-clamp-2">{shortText || `SKU: ${p.sku || "—"}`}</div>
 
         {priceNode}
 
@@ -823,15 +777,14 @@ function CategoryProductCard({ p, baseUrl }) {
           </div>
         )}
 
-        <button
-          onClick={handleAddToCart}
-          className="cursor-pointer mt-4 w-full rounded-md border-2 border-[#008159] text-[#008159] font-bold py-2.5 text-sm hover:bg-[#008159] hover:text-white"
-        >
+        <button onClick={handleAddToCart} className="cursor-pointer mt-4 w-full rounded-md border-2 border-[#008159] text-[#008159] font-bold py-2.5 text-sm hover:bg-[#008159] hover:text-white">
           <ShoppingCart className="inline mr-2 w-5 h-5" />
           কার্টে যুক্ত করুন
         </button>
       </div>
-    </div>
+
+    </>
+
   );
 }
 
@@ -843,9 +796,7 @@ function VariantRow({ variants, selectedVariantId, setSelectedVariantId }) {
 
   return (
     <div className="mt-3">
-      <div className="text-xs text-slate-600 font-bold">
-        {mainKey ? `${mainKey}:` : "Variant:"}
-      </div>
+      <div className="text-xs text-slate-600 font-bold">{mainKey ? `${mainKey}:` : "Variant:"}</div>
       <div className="mt-2 flex flex-wrap gap-2">
         {variants.map((v) => {
           const label = mainKey ? v.attributes?.[mainKey] : `#${v.id}`;
@@ -857,9 +808,7 @@ function VariantRow({ variants, selectedVariantId, setSelectedVariantId }) {
               onClick={() => setSelectedVariantId(v.id)}
               className={[
                 "px-3 py-1.5 rounded-lg border text-xs font-extrabold transition",
-                active
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white hover:bg-slate-50 border-gray-300 text-slate-800",
+                active ? "bg-slate-900 text-white border-slate-900" : "bg-white hover:bg-slate-50 border-gray-300 text-slate-800",
               ].join(" ")}
             >
               {label}

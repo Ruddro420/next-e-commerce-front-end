@@ -29,49 +29,47 @@ export default function OrderSuccessPage() {
     fetchOrderDetails();
   }, [orderId, router]);
 
- const fetchOrderDetails = async () => {
+  const fetchOrderDetails = async () => {
   setIsLoading(true);
   setError("");
   
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+    const url = `${baseUrl}/api/customer-auth/customer/orders/${1}`;
     
-    // Get token from your auth system
+    console.log("Fetching from URL:", url);
+    
+    // Get auth token
     const token = localStorage.getItem('customer_token');
+    console.log("Token exists:", !!token);
     
-    if (!token) {
-      // If no token, redirect to login or show error
-      setError("Please log in to view this order");
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("Fetching order with token:", token.substring(0, 20) + "...");
-    
-    const response = await fetch(`${baseUrl}/api/customer-auth/customer/orders/${orderId}`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       cache: 'no-store'
     });
 
     console.log("Response status:", response.status);
+    console.log("Response headers:", response.headers);
 
     // Check if response is JSON
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
+      // Get the HTML response for debugging
+      const htmlText = await response.text();
+      console.error("Received HTML instead of JSON:", htmlText.substring(0, 500));
       
+      // Check for specific status codes
       if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
+        throw new Error("Please login to view this order");
       } else if (response.status === 404) {
-        throw new Error("Order not found.");
+        throw new Error("Order not found");
       } else {
-        throw new Error(`Server error: ${response.status}`);
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }
     }
 
@@ -79,28 +77,41 @@ export default function OrderSuccessPage() {
     console.log("API Response:", data);
 
     if (!response.ok) {
-      throw new Error(data.message || `Error ${response.status}`);
+      throw new Error(data.message || `Failed to fetch order (${response.status})`);
     }
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to fetch order");
+    // Handle different response structures
+    if (data.success && data.order) {
+      setOrder(data.order);
+    } else if (data.success && data.orders) {
+      setOrder(data.orders);
+    } else if (data.order) {
+      setOrder(data.order);
+    } else if (data.data) {
+      setOrder(data.data);
+    } else {
+      console.warn("Unexpected response structure:", data);
+      setOrder(data);
     }
 
-    setOrder(data.order);
   } catch (error) {
     console.error("Error fetching order:", error);
-    setError(error.message);
     
-    // If unauthorized, redirect to login after a delay
-    if (error.message.includes("login") || error.message.includes("Session expired")) {
-      setTimeout(() => {
-        window.location.href = `/login?redirect=/order-confirmation/${orderId}`;
-      }, 2000);
+    // User-friendly error messages
+    if (error.message.includes("401")) {
+      setError("Please log in to view this order");
+    } else if (error.message.includes("404")) {
+      setError("Order not found. Please check the order ID.");
+    } else if (error.message.includes("Failed to fetch")) {
+      setError("Network error. Please check your connection.");
+    } else {
+      setError(error.message || "Could not load order details");
     }
   } finally {
     setIsLoading(false);
   }
 };
+
   // Calculate totals from order data
   const subtotal = order ? Number(order.subtotal) : 0;
   const shippingFee = order ? Number(order.shipping) : 0;

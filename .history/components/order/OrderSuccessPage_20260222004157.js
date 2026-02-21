@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Container from "@/components/ui/Container";
 import Link from "next/link";
 
-function formatBDT(amount) {
-  const n = Number(amount);
-  if (isNaN(n)) return "৳ 0";
-  return `৳ ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatBDT(n) {
+  return `৳ ${n.toLocaleString("en-US")}`;
 }
 
 export default function OrderSuccessPage() {
   const router = useRouter();
-  const params = useParams();
-  const orderId = params.id;
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get('id');
   
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,83 +27,31 @@ export default function OrderSuccessPage() {
     fetchOrderDetails();
   }, [orderId, router]);
 
- const fetchOrderDetails = async () => {
-  setIsLoading(true);
-  setError("");
-  
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
-    
-    // Get token from your auth system
-    const token = localStorage.getItem('customer_token');
-    
-    if (!token) {
-      // If no token, redirect to login or show error
-      setError("Please log in to view this order");
-      setIsLoading(false);
-      return;
-    }
+  const fetchOrderDetails = async () => {
+    setIsLoading(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+      const response = await fetch(`${baseUrl}/api/orders/${orderId}`);
+      const data = await response.json();
 
-    console.log("Fetching order with token:", token.substring(0, 20) + "...");
-    
-    const response = await fetch(`${baseUrl}/api/customer-auth/customer/orders/${orderId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      cache: 'no-store'
-    });
-
-    console.log("Response status:", response.status);
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
-      
-      if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
-      } else if (response.status === 404) {
-        throw new Error("Order not found.");
-      } else {
-        throw new Error(`Server error: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch order details");
       }
-    }
 
-    const data = await response.json();
-    console.log("API Response:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || `Error ${response.status}`);
+      setOrder(data.order || data.data || data);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      setError(error.message || "Could not load order details");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to fetch order");
-    }
-
-    setOrder(data.order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    setError(error.message);
-    
-    // If unauthorized, redirect to login after a delay
-    if (error.message.includes("login") || error.message.includes("Session expired")) {
-      setTimeout(() => {
-        window.location.href = `/login?redirect=/order-confirmation/${orderId}`;
-      }, 2000);
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
-  // Calculate totals from order data
-  const subtotal = order ? Number(order.subtotal) : 0;
-  const shippingFee = order ? Number(order.shipping) : 0;
-  const discount = order ? Number(order.discount) + Number(order.coupon_discount || 0) : 0;
-  const total = order ? Number(order.total) : 0;
+  // Calculate totals
+  const subtotal = order?.items?.reduce((s, i) => s + (Number(i.price) * Number(i.qty)), 0) || 0;
+  const shippingFee = Number(order?.shipping) || 0;
+  const discount = Number(order?.discount) || 0;
+  const total = subtotal + shippingFee - discount;
 
   // Format date
   const orderDate = order?.created_at ? new Date(order.created_at).toLocaleDateString('en-US', {
@@ -113,11 +59,6 @@ export default function OrderSuccessPage() {
     month: 'short',
     year: 'numeric'
   }) : '';
-
-  // Get payment method and status
-  const paymentMethod = order?.payment?.method || order?.payment_method || 'Not specified';
-  const paymentStatus = order?.payment?.status || order?.payment_status || 'pending';
-  const orderStatus = order?.status || 'processing';
 
   if (isLoading) {
     return <OrderSuccessSkeleton />;
@@ -134,7 +75,7 @@ export default function OrderSuccessPage() {
             <div className="mt-6">
               <Link
                 href="/"
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 inline-block transition-colors"
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 inline-block"
               >
                 Go to Homepage
               </Link>
@@ -159,15 +100,15 @@ export default function OrderSuccessPage() {
                     <span>✅</span> Order Confirmed
                   </div>
                   <h1 className="text-2xl md:text-3xl font-extrabold mt-3">
-                    Thank you, {order.customer?.name || 'Valued Customer'}!
+                    Thank you, {order.customer?.name || order.customer_name || 'Valued Customer'}!
                   </h1>
                   <p className="text-sm text-slate-600 mt-2">
-                    We've received your order and will process it soon. Order #{order.order_number || order.id}
+                    We've received your order and will process it soon. You'll receive a confirmation email shortly.
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-slate-500">Order Number</div>
-                  <div className="font-extrabold text-lg">{order.order_number || `ORD-${order.id}`}</div>
+                  <div className="text-xs text-slate-500">Order ID</div>
+                  <div className="font-extrabold text-lg">#{order.id || order.order_id}</div>
                   <div className="text-xs text-slate-500 mt-1">{orderDate}</div>
                 </div>
               </div>
@@ -176,11 +117,11 @@ export default function OrderSuccessPage() {
               <div className="mt-5 grid md:grid-cols-2 gap-4">
                 <InfoBox 
                   title="Delivery Address" 
-                  value={`${order.customer?.name || 'N/A'}\n${order.customer?.phone || 'N/A'}\n${order.shipping_address || order.billing_address || 'N/A'}`}
+                  value={`${order.customer?.name || order.customer_name || 'N/A'}\n${order.customer?.phone || order.customer_phone || 'N/A'}\n${order.shipping_address || order.billing_address || 'N/A'}`}
                 />
                 <InfoBox 
                   title="Payment & Shipping" 
-                  value={`Payment: ${paymentMethod}\nStatus: ${paymentStatus}\nShipping: ${shippingFee > 0 ? formatBDT(shippingFee) : 'Free'}`}
+                  value={`Payment: ${order.payment_method || order.payment?.method || 'Cash on Delivery'}\nShipping: ${order.shipping_method || 'Standard Delivery'}\nStatus: ${order.payment_status || order.status || 'Processing'}`}
                 />
               </div>
 
@@ -213,12 +154,16 @@ export default function OrderSuccessPage() {
                   <div key={idx} className="p-6 flex items-start justify-between gap-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start gap-4">
                       <div className="h-16 w-20 rounded-xl bg-slate-100 border border-gray-300 flex items-center justify-center overflow-hidden">
-                        <span className="text-xs text-slate-500">No image</span>
+                        {item.image ? (
+                          <img src={item.image} alt={item.product_name || item.name} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-xs text-slate-500">Image</span>
+                        )}
                       </div>
                       <div>
-                        <div className="font-extrabold">{item.product_name}</div>
-                        {item.sku && <div className="text-xs text-slate-500 mt-1">SKU: {item.sku}</div>}
-                        <div className="text-sm text-slate-600 mt-1">Qty: {item.qty}</div>
+                        <div className="font-extrabold">{item.product_name || item.name}</div>
+                        {item.variant && <div className="text-sm text-slate-600 mt-1">{item.variant}</div>}
+                        <div className="text-sm text-slate-600">Qty: {item.qty}</div>
                       </div>
                     </div>
                     <div className="font-extrabold">{formatBDT(Number(item.price) * Number(item.qty))}</div>
@@ -239,26 +184,26 @@ export default function OrderSuccessPage() {
                 />
                 <TimelineItem 
                   status="Payment Confirmed" 
-                  time={paymentStatus === 'paid' ? orderDate : ''}
-                  completed={paymentStatus === 'paid' || paymentStatus === 'completed'}
+                  time={order.payment_status === 'paid' ? orderDate : 'Pending'}
+                  completed={order.payment_status === 'paid'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Order Processing" 
                   time=""
-                  completed={orderStatus === 'processing' || orderStatus === 'completed'}
+                  completed={order.status === 'processing'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Shipped" 
                   time=""
-                  completed={orderStatus === 'shipped' || orderStatus === 'completed'}
+                  completed={order.status === 'shipped'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Delivered" 
                   time=""
-                  completed={orderStatus === 'delivered' || orderStatus === 'completed'}
+                  completed={order.status === 'delivered'}
                   isLast={true}
                 />
               </div>
@@ -273,7 +218,7 @@ export default function OrderSuccessPage() {
 
               <div className="mt-4 space-y-2 text-sm">
                 <Line label="Subtotal" value={formatBDT(subtotal)} />
-                <Line label="Shipping" value={shippingFee > 0 ? formatBDT(shippingFee) : "Free"} />
+                <Line label="Shipping" value={formatBDT(shippingFee)} />
                 {discount > 0 && (
                   <Line label="Discount" value={`-${formatBDT(discount)}`} valueClass="text-emerald-700" />
                 )}
@@ -288,32 +233,18 @@ export default function OrderSuccessPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Payment Status</span>
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    paymentStatus === 'paid' || paymentStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                    paymentStatus === 'partial' ? 'bg-amber-100 text-amber-700' :
-                    paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    order.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                    order.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
                     'bg-red-100 text-red-700'
                   }`}>
-                    {paymentStatus}
+                    {order.payment_status || 'Pending'}
                   </span>
                 </div>
-                {order.payment && (
+                {order.payment?.method && (
                   <div className="text-xs text-slate-600 mt-2">
-                    Payment Method: {order.payment.method || 'Cash on Delivery'}
-                    {order.payment.transaction_id && (
-                      <div className="mt-1">Transaction ID: {order.payment.transaction_id}</div>
-                    )}
+                    Payment Method: {order.payment.method}
                   </div>
                 )}
-              </div>
-
-              {/* Order Status */}
-              <div className="mt-3 border border-gray-300 rounded-xl p-4 bg-slate-50">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">Order Status</span>
-                  <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                    {orderStatus}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -347,17 +278,14 @@ export default function OrderSuccessPage() {
               </div>
             </div>
 
-            {/* Save Order */}
+            {/* Share Order */}
             <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card text-center">
-              <div className="font-extrabold mb-2">Save Order Details</div>
-              <p className="text-xs text-slate-600 mb-3">Download or print your order confirmation</p>
+              <div className="font-extrabold mb-2">Share Your Order</div>
+              <p className="text-xs text-slate-600 mb-3">Let your friends know what you bought!</p>
               <div className="flex justify-center gap-2">
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
-                  📥 Download
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
-                  🖨️ Print
-                </button>
+                <button className="w-10 h-10 rounded-full bg-blue-600 text-white hover:bg-blue-700">f</button>
+                <button className="w-10 h-10 rounded-full bg-sky-500 text-white hover:bg-sky-600">𝕏</button>
+                <button className="w-10 h-10 rounded-full bg-green-600 text-white hover:bg-green-700">📱</button>
               </div>
             </div>
           </div>

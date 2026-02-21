@@ -4,7 +4,6 @@
 import { useMemo, useState, useEffect } from "react";
 import Container from "@/components/ui/Container";
 import { useCart } from "@/store/cartStore";
-import Link from "next/link";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
 
@@ -477,13 +476,9 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {/* Checkout Button - Updated Link */}
-                <Link 
-                  href="/checkout"
-                  className="mt-4 w-full rounded-xl bg-red-800 hover:bg-red-900 text-white font-extrabold py-3 transition-colors flex items-center justify-center"
-                >
+                <button className="mt-4 w-full rounded-xl bg-red-800 hover:bg-red-900 text-white font-extrabold py-3 transition-colors">
                   Proceed to Checkout
-                </Link>
+                </button>
 
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 transition-colors">

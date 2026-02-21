@@ -108,7 +108,7 @@ export default function AccountPage() {
     const fetchOrders = async () => {
       try {
         console.log("Fetching orders for customer:", customer.id);
-        const data = await authFetch("/api/customer-auth/customer/orders");
+        const data = await authFetch("/api/customer/orders");
         console.log("Orders API response:", data); // Debug log
         
         if (!alive) return;

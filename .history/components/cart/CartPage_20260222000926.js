@@ -4,7 +4,6 @@
 import { useMemo, useState, useEffect } from "react";
 import Container from "@/components/ui/Container";
 import { useCart } from "@/store/cartStore";
-import Link from "next/link";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
 
@@ -14,181 +13,6 @@ function formatBDT(amount) {
   return `৳ ${n.toLocaleString("en-US")}`;
 }
 
-// Skeleton Loader Components
-function CartSkeleton() {
-  return (
-    <div className="bg-slate-50 min-h-screen">
-      <Container className="py-8">
-        {/* Header Skeleton */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="h-4 w-64 bg-gray-200 rounded-lg mt-2 animate-pulse"></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-32 bg-gray-200 rounded-full animate-pulse"></div>
-            <div className="h-10 w-24 bg-gray-200 rounded-full animate-pulse"></div>
-          </div>
-        </div>
-
-        <div className="mt-6 grid lg:grid-cols-3 gap-6">
-          {/* Left Column Skeleton */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-                <div className="h-6 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {[1, 2].map((i) => (
-                  <div key={i} className="p-5 flex flex-col sm:flex-row gap-4">
-                    <div className="w-full sm:w-28">
-                      <div className="aspect-[4/3] rounded-xl bg-gray-200 animate-pulse"></div>
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="flex justify-between">
-                        <div>
-                          <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
-                          <div className="h-5 w-40 bg-gray-200 rounded mt-2 animate-pulse"></div>
-                        </div>
-                        <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
-                        <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
-                      </div>
-                      <div className="flex justify-between items-center mt-4">
-                        <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
-                        <div className="h-8 w-32 bg-gray-200 rounded-xl animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex gap-3">
-                <div className="h-10 w-10 rounded-2xl bg-gray-200 animate-pulse"></div>
-                <div className="flex-1">
-                  <div className="h-5 w-40 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-4 w-full bg-gray-200 rounded mt-2 animate-pulse"></div>
-                  <div className="h-4 w-3/4 bg-gray-200 rounded mt-1 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column Skeleton */}
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 w-40 bg-gray-200 rounded mt-2 animate-pulse"></div>
-              <div className="mt-3 flex gap-2">
-                <div className="flex-1 h-10 bg-gray-200 rounded-xl animate-pulse"></div>
-                <div className="h-10 w-20 bg-gray-200 rounded-xl animate-pulse"></div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex justify-between">
-                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse"></div>
-              </div>
-              <div className="mt-4 space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex justify-between">
-                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                ))}
-                <div className="pt-3 border-t border-gray-200">
-                  <div className="flex justify-between">
-                    <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 h-12 w-full bg-gray-200 rounded-xl animate-pulse"></div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
-                <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mx-auto"></div>
-              <div className="mt-3 grid grid-cols-3 gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="text-center">
-                    <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse mx-auto"></div>
-                    <div className="h-3 w-12 bg-gray-200 rounded mt-2 mx-auto animate-pulse"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Container>
-    </div>
-  );
-}
-
-// Shipping Calculator Component
-function ShippingCalculator({ items, onShippingCalculated }) {
-  const [productDetails, setProductDetails] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProductDetails = async () => {
-      setIsLoading(true);
-      const uniqueProductIds = [...new Set(items.map(item => item.productId))];
-      const details = {};
-      
-      for (const productId of uniqueProductIds) {
-        try {
-          const response = await fetch(`${baseUrl}/api/products/${productId}`);
-          const data = await response.json();
-          
-          if (data.success && data.product) {
-            details[productId] = data.product;
-          }
-        } catch (error) {
-          console.error(`Error fetching product ${productId}:`, error);
-        }
-      }
-      
-      setProductDetails(details);
-      setIsLoading(false);
-    };
-
-    if (items.length > 0) {
-      fetchProductDetails();
-    } else {
-      setIsLoading(false);
-    }
-  }, [items]);
-
-  const shipping = useMemo(() => {
-    if (items.length === 0) return 0;
-    
-    return items.reduce((sum, item) => {
-      const productId = item.productId;
-      const product = productDetails[productId];
-      const shippingPrice = product ? Number(product.shipping_price) || 0 : 0;
-      return sum + (shippingPrice * (item.qty || 1));
-    }, 0);
-  }, [items, productDetails]);
-
-  // Pass shipping to parent component
-  useEffect(() => {
-    if (onShippingCalculated) {
-      onShippingCalculated(shipping, isLoading);
-    }
-  }, [shipping, isLoading, onShippingCalculated]);
-
-  return null; // This is a logic-only component
-}
-
 export default function CartPage() {
   const { items, coupon: appliedCoupon, applyCoupon, removeCoupon, setQty, removeItem, clearCart } = useCart();
   
@@ -196,18 +20,34 @@ export default function CartPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
-  const [shipping, setShipping] = useState(0);
-  const [isShippingLoading, setIsShippingLoading] = useState(true);
-  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [productDetails, setProductDetails] = useState({});
 
-  // Simulate initial page load
+  // Fetch product details for shipping information
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchProductDetails = async () => {
+      const uniqueProductIds = [...new Set(items.map(item => item.productId))];
+      
+      for (const productId of uniqueProductIds) {
+        try {
+          const response = await fetch(`${baseUrl}/api/products/${productId}`);
+          const data = await response.json();
+          
+          if (data.success && data.product) {
+            setProductDetails(prev => ({
+              ...prev,
+              [productId]: data.product
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching product ${productId}:`, error);
+        }
+      }
+    };
+
+    if (items.length > 0) {
+      fetchProductDetails();
+    }
+  }, [items]);
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, it) => {
@@ -216,6 +56,22 @@ export default function CartPage() {
       return sum + price * (it.qty ?? 1);
     }, 0);
   }, [items]);
+
+  // Calculate shipping dynamically from product shipping_price
+  const shipping = useMemo(() => {
+    if (items.length === 0) return 0;
+    
+    return items.reduce((sum, item) => {
+      const productId = item.productId;
+      const product = productDetails[productId];
+      
+      // Get shipping price from product data, default to 0 if not found
+      const shippingPrice = product ? Number(product.shipping_price) || 0 : 0;
+      
+      // Multiply by quantity since shipping applies per item
+      return sum + (shippingPrice * (item.qty || 1));
+    }, 0);
+  }, [items, productDetails]);
 
   const discount = useMemo(() => {
     return appliedCoupon?.discount || 0;
@@ -257,6 +113,7 @@ export default function CartPage() {
 
       const text = await response.text();
       
+      // Check if response starts with HTML
       if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
         throw new Error("Received HTML instead of JSON. API endpoint might be incorrect.");
       }
@@ -285,23 +142,8 @@ export default function CartPage() {
     }
   };
 
-  const handleShippingCalculated = (calculatedShipping, isLoading) => {
-    setShipping(calculatedShipping);
-    setIsShippingLoading(isLoading);
-  };
-
-  // Show skeleton loader while page is loading
-  if (isPageLoading) {
-    return <CartSkeleton />;
-  }
-
   return (
     <div className="bg-slate-50 min-h-screen">
-      <ShippingCalculator 
-        items={items} 
-        onShippingCalculated={handleShippingCalculated}
-      />
-      
       <Container className="py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -344,15 +186,20 @@ export default function CartPage() {
                 </div>
 
                 <div className="divide-y divide-gray-200">
-                  {items.map((it) => (
-                    <CartRow
-                      key={it.lineId}
-                      item={it}
-                      isLoading={isShippingLoading}
-                      onQty={(q) => setQty(it.lineId, q)}
-                      onRemove={() => removeItem(it.lineId)}
-                    />
-                  ))}
+                  {items.map((it) => {
+                    const product = productDetails[it.productId];
+                    const shippingPrice = product ? Number(product.shipping_price) || 0 : 0;
+                    
+                    return (
+                      <CartRow
+                        key={it.lineId}
+                        item={it}
+                        shippingPrice={shippingPrice}
+                        onQty={(q) => setQty(it.lineId, q)}
+                        onRemove={() => removeItem(it.lineId)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 
@@ -411,11 +258,7 @@ export default function CartPage() {
                       disabled={isApplyingCoupon || appliedCoupon || !couponInput.trim()}
                       className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-bold hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors min-w-[80px]"
                     >
-                      {isApplyingCoupon ? (
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                      ) : "Apply"}
+                      {isApplyingCoupon ? "..." : "Apply"}
                     </button>
                   </div>
                   
@@ -453,11 +296,7 @@ export default function CartPage() {
                   <Row label="Subtotal" value={formatBDT(subtotal)} />
                   <Row
                     label="Shipping"
-                    value={isShippingLoading ? (
-                      <div className="flex items-center">
-                        <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
-                      </div>
-                    ) : shipping === 0 ? "Free" : formatBDT(shipping)}
+                    value={shipping === 0 ? "Free" : formatBDT(shipping)}
                   />
                   {discount > 0 && (
                     <Row
@@ -469,21 +308,13 @@ export default function CartPage() {
 
                   <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
                     <div className="font-extrabold text-base">Total</div>
-                    <div className="font-extrabold text-xl text-red-800">
-                      {isShippingLoading ? (
-                        <div className="w-24 h-6 bg-gray-200 rounded animate-pulse"></div>
-                      ) : formatBDT(total)}
-                    </div>
+                    <div className="font-extrabold text-xl text-red-800">{formatBDT(total)}</div>
                   </div>
                 </div>
 
-                {/* Checkout Button - Updated Link */}
-                <Link 
-                  href="/checkout"
-                  className="mt-4 w-full rounded-xl bg-red-800 hover:bg-red-900 text-white font-extrabold py-3 transition-colors flex items-center justify-center"
-                >
+                <button className="mt-4 w-full rounded-xl bg-red-800 hover:bg-red-900 text-white font-extrabold py-3 transition-colors">
                   Proceed to Checkout
-                </Link>
+                </button>
 
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 transition-colors">
@@ -515,7 +346,7 @@ export default function CartPage() {
   );
 }
 
-function CartRow({ item, isLoading, onQty, onRemove }) {
+function CartRow({ item, shippingPrice, onQty, onRemove }) {
   const price = Number(item.price);
   const oldPrice = Number(item.oldPrice);
   const hasPrice = Number.isFinite(price);
@@ -577,11 +408,9 @@ function CartRow({ item, isLoading, onQty, onRemove }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {isLoading ? (
-              <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
-            ) : (
+            {shippingPrice > 0 && (
               <span className="text-xs text-slate-500">
-                Shipping calculated at checkout
+                Shipping: {formatBDT(shippingPrice)}/item
               </span>
             )}
             <QtyStepper qty={item.qty ?? 1} setQty={onQty} />

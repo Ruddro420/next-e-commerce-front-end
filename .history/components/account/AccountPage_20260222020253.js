@@ -96,7 +96,7 @@ export default function AccountPage() {
     if (!customer) router.replace("/login?next=/account");
   }, [customer, authLoading, router]);
 
-  // Load orders only when Orders tab is opened - FIXED VERSION
+  // Load orders only when Orders tab is opened
   useEffect(() => {
     if (!customer) return;
     if (active !== "orders") return;
@@ -105,41 +105,18 @@ export default function AccountPage() {
     setOrdersLoading(true);
     setOrdersError("");
 
-    const fetchOrders = async () => {
-      try {
-        console.log("Fetching orders for customer:", customer.id);
-        const data = await authFetch("/api/customer-auth/customer/orders");
-        console.log("Orders API response:", data); // Debug log
-        
+    authFetch("/api/customer/orders")
+      .then((data) => {
         if (!alive) return;
-
-        // Handle the response structure correctly
-        if (data && data.success && data.orders) {
-          // Your backend returns paginated data with 'data' property
-          const ordersList = data.orders.data || [];
-          console.log("Orders list:", ordersList); // Debug log
-          setOrders(ordersList);
-        } else if (Array.isArray(data)) {
-          // Fallback if API returns direct array
-          setOrders(data);
-        } else if (data && data.orders && Array.isArray(data.orders)) {
-          // Another possible structure
-          setOrders(data.orders);
-        } else {
-          console.warn("Unexpected response structure:", data);
-          setOrders([]);
-          setOrdersError("No orders found or invalid response format");
-        }
-      } catch (e) {
+        // paginator: { orders: { data: [...] } } OR direct array
+        const list = Array.isArray(data.orders) ? data.orders : data.orders?.data || [];
+        setOrders(list);
+      })
+      .catch((e) => {
         if (!alive) return;
-        console.error("Orders fetch error:", e);
         setOrdersError(e.message || "Failed to load orders");
-      } finally {
-        if (alive) setOrdersLoading(false);
-      }
-    };
-
-    fetchOrders();
+      })
+      .finally(() => alive && setOrdersLoading(false));
 
     return () => {
       alive = false;
@@ -273,16 +250,12 @@ export default function AccountPage() {
                 </div>
 
                 {active === "orders" ? (
-                  <button
-                    onClick={() => {
-                      // Force refresh orders
-                      setActive("profile");
-                      setTimeout(() => setActive("orders"), 10);
-                    }}
+                  <a
+                    href="/account"
                     className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 text-sm"
                   >
                     Refresh
-                  </button>
+                  </a>
                 ) : null}
               </div>
 

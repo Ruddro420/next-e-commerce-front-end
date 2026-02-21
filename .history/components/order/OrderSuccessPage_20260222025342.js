@@ -29,78 +29,26 @@ export default function OrderSuccessPage() {
     fetchOrderDetails();
   }, [orderId, router]);
 
- const fetchOrderDetails = async () => {
-  setIsLoading(true);
-  setError("");
-  
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
-    
-    // Get token from your auth system
-    const token = localStorage.getItem('customer_token');
-    
-    if (!token) {
-      // If no token, redirect to login or show error
-      setError("Please log in to view this order");
-      setIsLoading(false);
-      return;
-    }
+  const fetchOrderDetails = async () => {
+    setIsLoading(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+      const response = await fetch(`${baseUrl}/api/customer-auth/orders/${orderId}`);
+      const data = await response.json();
 
-    console.log("Fetching order with token:", token.substring(0, 20) + "...");
-    
-    const response = await fetch(`${baseUrl}/api/customer-auth/customer/orders/${orderId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      cache: 'no-store'
-    });
-
-    console.log("Response status:", response.status);
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
-      
-      if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
-      } else if (response.status === 404) {
-        throw new Error("Order not found.");
-      } else {
-        throw new Error(`Server error: ${response.status}`);
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to fetch order details");
       }
-    }
 
-    const data = await response.json();
-    console.log("API Response:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || `Error ${response.status}`);
+      setOrder(data.order);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      setError(error.message || "Could not load order details");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to fetch order");
-    }
-
-    setOrder(data.order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    setError(error.message);
-    
-    // If unauthorized, redirect to login after a delay
-    if (error.message.includes("login") || error.message.includes("Session expired")) {
-      setTimeout(() => {
-        window.location.href = `/login?redirect=/order-confirmation/${orderId}`;
-      }, 2000);
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
   // Calculate totals from order data
   const subtotal = order ? Number(order.subtotal) : 0;
   const shippingFee = order ? Number(order.shipping) : 0;

@@ -529,7 +529,7 @@ export default function ProductDetails({ productId }) {
                 {/* Big add to cart */}
                 <button
                   onClick={handleAddToCart}
-                  className="cursor-pointer mt-5 w-full rounded-md bg-red-800 hover:bg-red-900 text-white font-bold py-3 flex items-center justify-center gap-2"
+                  className="mt-5 w-full rounded-md bg-red-800 hover:bg-red-900 text-white font-bold py-3 flex items-center justify-center gap-2"
                 >
                   <ShoppingCart className="w-5 h-5" />
                   কার্টে যোগ দিন ডেলিভারিতে অর্ডার করুন

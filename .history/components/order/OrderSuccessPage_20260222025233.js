@@ -29,95 +29,84 @@ export default function OrderSuccessPage() {
     fetchOrderDetails();
   }, [orderId, router]);
 
- const fetchOrderDetails = async () => {
-  setIsLoading(true);
-  setError("");
-  
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+  const fetchOrderDetails = async () => {
+    setIsLoading(true);
+    setError("");
     
-    // Get token from your auth system
-    const token = localStorage.getItem('customer_token');
-    
-    if (!token) {
-      // If no token, redirect to login or show error
-      setError("Please log in to view this order");
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("Fetching order with token:", token.substring(0, 20) + "...");
-    
-    const response = await fetch(`${baseUrl}/api/customer-auth/customer/orders/${orderId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      cache: 'no-store'
-    });
-
-    console.log("Response status:", response.status);
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
       
-      if (response.status === 401) {
-        throw new Error("Session expired. Please login again.");
-      } else if (response.status === 404) {
-        throw new Error("Order not found.");
-      } else {
-        throw new Error(`Server error: ${response.status}`);
+      // Try the public route first (no auth required)
+      console.log(`Fetching order from: ${baseUrl}/api/orders/${orderId}`);
+      
+      const response = await fetch(`${baseUrl}/api/orders/${orderId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      });
+
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
-    }
 
-    const data = await response.json();
-    console.log("API Response:", data);
+      // Handle different response structures
+      if (data.success && data.order) {
+        setOrder(data.order);
+      } else if (data.success && data.orders) {
+        setOrder(data.orders);
+      } else if (data.order) {
+        setOrder(data.order);
+      } else if (data.data) {
+        setOrder(data.data);
+      } else {
+        setOrder(data);
+      }
 
-    if (!response.ok) {
-      throw new Error(data.message || `Error ${response.status}`);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+      setError(error.message || "Could not load order details. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    if (!data.success) {
-      throw new Error(data.message || "Failed to fetch order");
-    }
+  const handleRetry = () => {
+    fetchOrderDetails();
+  };
 
-    setOrder(data.order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    setError(error.message);
-    
-    // If unauthorized, redirect to login after a delay
-    if (error.message.includes("login") || error.message.includes("Session expired")) {
-      setTimeout(() => {
-        window.location.href = `/login?redirect=/order-confirmation/${orderId}`;
-      }, 2000);
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
-  // Calculate totals from order data
-  const subtotal = order ? Number(order.subtotal) : 0;
-  const shippingFee = order ? Number(order.shipping) : 0;
-  const discount = order ? Number(order.discount) + Number(order.coupon_discount || 0) : 0;
-  const total = order ? Number(order.total) : 0;
+  // Safely calculate totals from order data
+  const subtotal = order ? Number(order.subtotal || order.sub_total || 0) : 0;
+  const shippingFee = order ? Number(order.shipping || order.shipping_cost || 0) : 0;
+  const discount = order ? Number(order.discount || 0) + Number(order.coupon_discount || 0) : 0;
+  const total = order ? Number(order.total || order.grand_total || 0) : 0;
 
   // Format date
   const orderDate = order?.created_at ? new Date(order.created_at).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
-    year: 'numeric'
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   }) : '';
 
   // Get payment method and status
-  const paymentMethod = order?.payment?.method || order?.payment_method || 'Not specified';
-  const paymentStatus = order?.payment?.status || order?.payment_status || 'pending';
-  const orderStatus = order?.status || 'processing';
+  const paymentMethod = order?.payment?.method || 
+                       order?.payment_method || 
+                       order?.payment?.payment_method || 
+                       'Not specified';
+  
+  const paymentStatus = order?.payment?.status || 
+                       order?.payment_status || 
+                       order?.payment?.payment_status || 
+                       'pending';
+  
+  const orderStatus = order?.status || order?.order_status || 'processing';
 
   if (isLoading) {
     return <OrderSuccessSkeleton />;
@@ -131,10 +120,16 @@ export default function OrderSuccessPage() {
             <div className="text-6xl mb-4">😕</div>
             <h2 className="text-xl font-extrabold">Order Not Found</h2>
             <p className="mt-2 text-sm text-slate-600">{error || "We couldn't find your order details."}</p>
-            <div className="mt-6">
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={handleRetry}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 inline-block transition-colors"
+              >
+                Try Again
+              </button>
               <Link
                 href="/"
-                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 inline-block transition-colors"
+                className="rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-bold px-6 py-3 inline-block transition-colors"
               >
                 Go to Homepage
               </Link>
@@ -153,19 +148,19 @@ export default function OrderSuccessPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Success Header */}
             <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
                     <span>✅</span> Order Confirmed
                   </div>
                   <h1 className="text-2xl md:text-3xl font-extrabold mt-3">
-                    Thank you, {order.customer?.name || 'Valued Customer'}!
+                    Thank you, {order.customer?.name || order.customer_name || 'Valued Customer'}!
                   </h1>
                   <p className="text-sm text-slate-600 mt-2">
-                    We've received your order and will process it soon. Order #{order.order_number || order.id}
+                    We've received your order and will process it soon. Order #{order.order_number || order.invoice_no || order.id}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right bg-slate-50 p-4 rounded-xl border border-gray-300">
                   <div className="text-xs text-slate-500">Order Number</div>
                   <div className="font-extrabold text-lg">{order.order_number || `ORD-${order.id}`}</div>
                   <div className="text-xs text-slate-500 mt-1">{orderDate}</div>
@@ -176,11 +171,11 @@ export default function OrderSuccessPage() {
               <div className="mt-5 grid md:grid-cols-2 gap-4">
                 <InfoBox 
                   title="Delivery Address" 
-                  value={`${order.customer?.name || 'N/A'}\n${order.customer?.phone || 'N/A'}\n${order.shipping_address || order.billing_address || 'N/A'}`}
+                  value={`${order.customer?.name || order.customer_name || 'N/A'}\n${order.customer?.phone || order.customer_phone || 'N/A'}\n${order.shipping_address || order.billing_address || order.address || 'N/A'}`}
                 />
                 <InfoBox 
                   title="Payment & Shipping" 
-                  value={`Payment: ${paymentMethod}\nStatus: ${paymentStatus}\nShipping: ${shippingFee > 0 ? formatBDT(shippingFee) : 'Free'}`}
+                  value={`Payment Method: ${paymentMethod}\nPayment Status: ${paymentStatus}\nShipping Method: ${order.shipping_method || 'Standard Delivery'}\nShipping Cost: ${shippingFee > 0 ? formatBDT(shippingFee) : 'Free'}`}
                 />
               </div>
 
@@ -188,13 +183,13 @@ export default function OrderSuccessPage() {
               <div className="mt-5 flex flex-col sm:flex-row gap-3">
                 <Link
                   href="/account"
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 text-center transition-colors"
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-3 text-center transition-colors flex-1 sm:flex-none"
                 >
                   Track Order
                 </Link>
                 <Link
                   href="/shop"
-                  className="rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-bold px-6 py-3 text-center transition-colors"
+                  className="rounded-xl border border-gray-300 bg-white hover:bg-slate-50 font-bold px-6 py-3 text-center transition-colors flex-1 sm:flex-none"
                 >
                   Continue Shopping
                 </Link>
@@ -205,23 +200,31 @@ export default function OrderSuccessPage() {
             <div className="border border-gray-300 bg-white rounded-2xl soft-card overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-300 bg-gray-50">
                 <div className="font-extrabold">Order Items</div>
-                <div className="text-sm text-slate-600 mt-1">{order.items?.length || 0} item(s)</div>
+                <div className="text-sm text-slate-600 mt-1">{order.items?.length || order.products?.length || 0} item(s)</div>
               </div>
 
               <div className="divide-y divide-gray-200">
-                {order.items?.map((item, idx) => (
+                {(order.items || order.products || []).map((item, idx) => (
                   <div key={idx} className="p-6 flex items-start justify-between gap-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-4 flex-1">
                       <div className="h-16 w-20 rounded-xl bg-slate-100 border border-gray-300 flex items-center justify-center overflow-hidden">
-                        <span className="text-xs text-slate-500">No image</span>
+                        {item.image ? (
+                          <img src={item.image} alt={item.product_name} className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-slate-500">No image</span>
+                        )}
                       </div>
-                      <div>
-                        <div className="font-extrabold">{item.product_name}</div>
+                      <div className="flex-1">
+                        <div className="font-extrabold">{item.product_name || item.name}</div>
                         {item.sku && <div className="text-xs text-slate-500 mt-1">SKU: {item.sku}</div>}
-                        <div className="text-sm text-slate-600 mt-1">Qty: {item.qty}</div>
+                        <div className="text-sm text-slate-600 mt-1">
+                          Qty: {item.quantity || item.qty || 1} × {formatBDT(item.price || item.unit_price || 0)}
+                        </div>
                       </div>
                     </div>
-                    <div className="font-extrabold">{formatBDT(Number(item.price) * Number(item.qty))}</div>
+                    <div className="font-extrabold whitespace-nowrap">
+                      {formatBDT((item.price || item.unit_price || 0) * (item.quantity || item.qty || 1))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -239,26 +242,26 @@ export default function OrderSuccessPage() {
                 />
                 <TimelineItem 
                   status="Payment Confirmed" 
-                  time={paymentStatus === 'paid' ? orderDate : ''}
+                  time={paymentStatus === 'paid' || paymentStatus === 'completed' ? orderDate : ''}
                   completed={paymentStatus === 'paid' || paymentStatus === 'completed'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Order Processing" 
                   time=""
-                  completed={orderStatus === 'processing' || orderStatus === 'completed'}
+                  completed={orderStatus === 'processing' || orderStatus === 'completed' || orderStatus === 'delivered'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Shipped" 
                   time=""
-                  completed={orderStatus === 'shipped' || orderStatus === 'completed'}
+                  completed={orderStatus === 'shipped' || orderStatus === 'delivered'}
                   isLast={false}
                 />
                 <TimelineItem 
                   status="Delivered" 
                   time=""
-                  completed={orderStatus === 'delivered' || orderStatus === 'completed'}
+                  completed={orderStatus === 'delivered'}
                   isLast={true}
                 />
               </div>
@@ -279,7 +282,7 @@ export default function OrderSuccessPage() {
                 )}
                 <div className="pt-3 border-t border-gray-300 flex items-center justify-between">
                   <div className="font-extrabold text-base">Total Paid</div>
-                  <div className="font-extrabold text-xl text-red-800">{formatBDT(total)}</div>
+                  <div className="font-extrabold text-xl text-emerald-700">{formatBDT(total)}</div>
                 </div>
               </div>
 
@@ -298,7 +301,7 @@ export default function OrderSuccessPage() {
                 </div>
                 {order.payment && (
                   <div className="text-xs text-slate-600 mt-2">
-                    Payment Method: {order.payment.method || 'Cash on Delivery'}
+                    <div>Method: {order.payment.method || order.payment.payment_method || 'Cash on Delivery'}</div>
                     {order.payment.transaction_id && (
                       <div className="mt-1">Transaction ID: {order.payment.transaction_id}</div>
                     )}
@@ -310,7 +313,13 @@ export default function OrderSuccessPage() {
               <div className="mt-3 border border-gray-300 rounded-xl p-4 bg-slate-50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">Order Status</span>
-                  <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    orderStatus === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                    orderStatus === 'processing' ? 'bg-blue-100 text-blue-700' :
+                    orderStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    orderStatus === 'cancelled' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
                     {orderStatus}
                   </span>
                 </div>
@@ -321,14 +330,14 @@ export default function OrderSuccessPage() {
             <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card">
               <div className="font-extrabold mb-3">Need Help?</div>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                   <span className="text-xl">📞</span>
                   <div>
                     <div className="font-semibold">Customer Support</div>
                     <div className="text-xs text-slate-600">Call 16793 (9AM–8PM)</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                   <span className="text-xl">✉️</span>
                   <div>
                     <div className="font-semibold">Email Us</div>
@@ -352,10 +361,10 @@ export default function OrderSuccessPage() {
               <div className="font-extrabold mb-2">Save Order Details</div>
               <p className="text-xs text-slate-600 mb-3">Download or print your order confirmation</p>
               <div className="flex justify-center gap-2">
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
-                  📥 Download
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold">
+                <button 
+                  onClick={() => window.print()}
+                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-slate-50 text-sm font-semibold transition-colors"
+                >
                   🖨️ Print
                 </button>
               </div>
@@ -450,8 +459,8 @@ function TimelineItem({ status, time, completed, isLast }) {
 // Info Box Component
 function InfoBox({ title, value }) {
   return (
-    <div className="border border-gray-300 rounded-xl p-4 bg-white">
-      <div className="text-sm font-extrabold">{title}</div>
+    <div className="border border-gray-300 rounded-xl p-4 bg-white hover:bg-slate-50 transition-colors">
+      <div className="text-sm font-extrabold text-emerald-700">{title}</div>
       <pre className="mt-2 text-sm text-slate-600 whitespace-pre-wrap font-sans leading-relaxed">
         {value}
       </pre>
@@ -462,7 +471,7 @@ function InfoBox({ title, value }) {
 // Line Component
 function Line({ label, value, valueClass = "" }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between py-1">
       <div className="text-slate-600">{label}</div>
       <div className={`font-semibold ${valueClass}`}>{value}</div>
     </div>
