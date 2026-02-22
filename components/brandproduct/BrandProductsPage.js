@@ -2,13 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Container from "@/components/ui/Container";
-import {
-  Heart,
-  ShoppingCart,
-  SlidersHorizontal,
-  X,
-  RotateCw,
-} from "lucide-react";
+import { ShoppingCart, SlidersHorizontal, X, RotateCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/store/cartStore";
 import { WishlistButton } from "../layout/WishlistButton";
@@ -84,17 +78,30 @@ function getBrandName(p) {
   return p?.brand?.name || p?.brand || null;
 }
 
-/* ===================== page ===================== */
+/* ===================== NEW: Special Offer Page ===================== */
+/**
+ * Fetches products from:
+ *  - http://10.211.112.19:8000/api/products/brand/:slug
+ *
+ * Example route:
+ *  app/(shop)/brand/[slug]/page.jsx
+ *  <BrandProductsPage slug="special-offer" title="Special Offer" />
+ *
+ * Or for a dedicated offer page:
+ *  app/(shop)/special-offer/page.jsx
+ *  <BrandProductsPage slug="special-offer" title="Special Offer" />
+ */
 
-export default function CategoryPage({ categoryId }) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+export default function BrandProductsPage({ slug = "special-offer", title }) {
+  // keep your env support, but fall back to the IP provided
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://10.211.112.19:8000";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
 
   // UI: sort & responsive filter drawer
@@ -108,11 +115,14 @@ export default function CategoryPage({ categoryId }) {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
 
+  // Pagination
+  const [visibleCount, setVisibleCount] = useState(8); // Show 8 products initially
+
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 2000;
   const TIMEOUT_DURATION = 12000;
 
-  const fetchCategoryData = useCallback(
+  const fetchBrandProducts = useCallback(
     async (isRetryAttempt = false) => {
       if (!baseUrl) {
         setError(
@@ -121,8 +131,8 @@ export default function CategoryPage({ categoryId }) {
         setLoading(false);
         return;
       }
-      if (!categoryId && categoryId !== 0) {
-        setError("categoryId missing from route params");
+      if (!slug) {
+        setError("brand slug missing from route params");
         setLoading(false);
         return;
       }
@@ -136,7 +146,8 @@ export default function CategoryPage({ categoryId }) {
         setLoading(true);
         setError("");
 
-        const url = `${baseUrl}/api/categories/${categoryId}/products`;
+        // ✅ by slug name
+        const url = `${baseUrl}/api/products/brand/${encodeURIComponent(slug)}`;
         const res = await fetch(url, {
           cache: "no-store",
           signal: controller.signal,
@@ -146,8 +157,11 @@ export default function CategoryPage({ categoryId }) {
           throw new Error(`API error: ${res.status} ${res.statusText}`);
 
         const data = await res.json();
-        setCategory(data?.category || null);
-        setProducts(Array.isArray(data?.products) ? data.products : []);
+
+        // API might return { products: [] } OR [] directly — handle both
+        const list = Array.isArray(data) ? data : data?.products;
+
+        setProducts(Array.isArray(list) ? list : []);
 
         setRetryCount(0);
         setError("");
@@ -158,7 +172,6 @@ export default function CategoryPage({ categoryId }) {
             : e.message;
 
         setError(errorMessage);
-        setCategory(null);
         setProducts([]);
 
         if (retryCount < MAX_RETRIES) {
@@ -172,12 +185,12 @@ export default function CategoryPage({ categoryId }) {
         setIsRetrying(false);
       }
     },
-    [baseUrl, categoryId, retryCount]
+    [baseUrl, slug, retryCount]
   );
 
   useEffect(() => {
-    fetchCategoryData(retryCount > 0);
-  }, [fetchCategoryData, retryCount]);
+    fetchBrandProducts(retryCount > 0);
+  }, [fetchBrandProducts, retryCount]);
 
   const handleManualRetry = () => {
     setRetryCount((prev) => prev + 1);
@@ -271,6 +284,15 @@ export default function CategoryPage({ categoryId }) {
     return list;
   }, [products, type, inStockOnly, selectedBrands, selectedSizes, priceMax, sort]);
 
+  const handleViewAll = () => {
+    setVisibleCount(filteredProducts.length);
+  };
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [filteredProducts.length]);
+
   if (error && !products.length && !loading) {
     return (
       <div className="bg-slate-50 min-h-screen">
@@ -280,7 +302,7 @@ export default function CategoryPage({ categoryId }) {
               <span className="text-5xl">⚠️</span>
             </div>
             <h3 className="text-lg font-semibold text-red-700 mb-2">
-              Failed to Load Category
+              Failed to Load Products
             </h3>
             <p className="text-sm text-red-600 mb-4">{error}</p>
 
@@ -319,14 +341,12 @@ export default function CategoryPage({ categoryId }) {
       <Container className="py-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-xs text-slate-500">Category</div>
+            <div className="text-xs text-slate-500">Brand</div>
             <h1 className="text-2xl md:text-3xl font-extrabold capitalize">
-              {category?.name || "Category"}
+              {title || slug?.replace(/-/g, " ") || "Brand"}
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              {loading
-                ? "Loading..."
-                : `${filteredProducts.length} products found`}
+              {loading ? "Loading..." : `${filteredProducts.length} products found`}
             </p>
           </div>
 
@@ -338,17 +358,6 @@ export default function CategoryPage({ categoryId }) {
               <SlidersHorizontal className="w-5 h-5" />
               Filters
             </button>
-
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-              disabled={loading}
-            >
-              <option value="newest">Sort: Newest</option>
-              <option value="price_low">Price: Low to High</option>
-              <option value="price_high">Price: High to Low</option>
-            </select>
           </div>
         </div>
 
@@ -393,7 +402,7 @@ export default function CategoryPage({ categoryId }) {
 
           <section className="lg:col-span-3">
             {loading ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
@@ -422,11 +431,25 @@ export default function CategoryPage({ categoryId }) {
                 </button>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {filteredProducts.map((p) => (
-                  <CategoryProductCard key={p.id} p={p} baseUrl={baseUrl} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {filteredProducts.slice(0, visibleCount).map((p) => (
+                    <CategoryProductCard key={p.id} p={p} baseUrl={baseUrl} />
+                  ))}
+                </div>
+                
+                {visibleCount < filteredProducts.length && (
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={handleViewAll}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#008159] hover:bg-[#006b47] text-white font-bold rounded-xl transition-colors"
+                    >
+                      View All Products ({filteredProducts.length})
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
@@ -486,23 +509,25 @@ export default function CategoryPage({ categoryId }) {
 
 function SidebarFilters({ disabled, ...props }) {
   return (
-    <aside className="hidden lg:block">
-      <div className="border border-gray-300 bg-white rounded-2xl soft-card overflow-hidden sticky top-24">
-        <div className="px-5 py-4 border-b border-gray-300 flex items-center justify-between">
-          <div className="font-extrabold">Filters</div>
-          <button
-            onClick={props.onClear}
-            className="text-sm font-bold text-emerald-700 hover:underline disabled:opacity-50"
-            disabled={disabled}
-          >
-            Clear
-          </button>
-        </div>
-        <div className="p-5">
-          <SidebarFiltersContent disabled={disabled} {...props} />
-        </div>
-      </div>
-    </aside>
+    <>
+    </>
+    // <aside className="hidden lg:block">
+    //   <div className="border border-gray-300 bg-white rounded-2xl soft-card overflow-hidden sticky top-24">
+    //     <div className="px-5 py-4 border-b border-gray-300 flex items-center justify-between">
+    //       <div className="font-extrabold">Filters</div>
+    //       <button
+    //         onClick={props.onClear}
+    //         className="text-sm font-bold text-emerald-700 hover:underline disabled:opacity-50"
+    //         disabled={disabled}
+    //       >
+    //         Clear
+    //       </button>
+    //     </div>
+    //     <div className="p-5">
+    //       <SidebarFiltersContent disabled={disabled} {...props} />
+    //     </div>
+    //   </div>
+    // </aside>
   );
 }
 
@@ -599,7 +624,9 @@ function SidebarFiltersContent({
             !disabled && setPriceMax(parseInt(e.target.value, 10))
           }
           disabled={disabled}
-          className={["mt-3 w-full", disabled && "opacity-50 cursor-not-allowed"].join(" ")}
+          className={["mt-3 w-full", disabled && "opacity-50 cursor-not-allowed"].join(
+            " "
+          )}
         />
       </div>
 
@@ -610,7 +637,9 @@ function SidebarFiltersContent({
             {allBrands.map((b) => (
               <label
                 key={b}
-                className={["flex items-center gap-2 text-sm", disabled && "opacity-50"].join(" ")}
+                className={["flex items-center gap-2 text-sm", disabled && "opacity-50"].join(
+                  " "
+                )}
               >
                 <input
                   type="checkbox"
@@ -650,9 +679,7 @@ function SidebarFiltersContent({
               );
             })}
           </div>
-          <div className="mt-2 text-xs text-slate-500">
-            Based on variant attributes
-          </div>
+          <div className="mt-2 text-xs text-slate-500">Based on variant attributes</div>
         </div>
       ) : null}
 
@@ -726,7 +753,6 @@ function CategoryProductCard({ p, baseUrl }) {
     );
   }, [isVariable, p, selectedVariant]);
 
-  // ✅ add to cart inside card (scope fixed)
   const handleAddToCart = (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
@@ -734,21 +760,25 @@ function CategoryProductCard({ p, baseUrl }) {
     const v = isVariable ? selectedVariant : null;
 
     const price = isVariable
-      ? (v?.sale_price ?? v?.regular_price)
-      : (p?.sale_price ?? p?.regular_price);
+      ? v?.sale_price ?? v?.regular_price
+      : p?.sale_price ?? p?.regular_price;
 
     const oldPrice = isVariable
-      ? (v?.regular_price && v?.sale_price ? v.regular_price : null)
-      : (p?.regular_price && p?.sale_price ? p.regular_price : null);
+      ? v?.regular_price && v?.sale_price
+        ? v.regular_price
+        : null
+      : p?.regular_price && p?.sale_price
+      ? p.regular_price
+      : null;
 
     const variantLabel = isVariable
       ? (() => {
-        const attrs = v?.attributes || {};
-        const keys = Object.keys(attrs);
-        if (!keys.length) return `Variant #${v?.id}`;
-        return keys.map((k) => `${k}: ${attrs[k]}`).join(", ");
-      })()
-      : (p?.variant ?? "");
+          const attrs = v?.attributes || {};
+          const keys = Object.keys(attrs);
+          if (!keys.length) return `Variant #${v?.id}`;
+          return keys.map((k) => `${k}: ${attrs[k]}`).join(", ");
+        })()
+      : p?.variant ?? "";
 
     const image =
       (isVariable && v?.image_path ? `${baseUrl}/storage/${v.image_path}` : "") ||
@@ -766,7 +796,7 @@ function CategoryProductCard({ p, baseUrl }) {
         price,
         oldPrice,
         stock: isVariable ? v?.stock : p?.stock,
-        attrs: isVariable ? (v?.attributes || null) : null,
+        attrs: isVariable ? v?.attributes || null : null,
       },
       1
     );
@@ -775,58 +805,55 @@ function CategoryProductCard({ p, baseUrl }) {
   };
 
   return (
-    <>
-      <div className="bg-white rounded-2xl soft-card overflow-hidden h-full flex flex-col">
-
-        <div className="relative p-5 bg-[#FAF8F6]">
-          <WishlistButton productId={p.id} />
-          <Link href={`/product/${p.id}`} className="block">
-            <div className="h-44 flex items-center justify-center">
-              {imgSrc ? (
-                <img
-                  src={imgSrc}
-                  alt={p.name}
-                  className="object-contain w-[170px] h-[170px] rounded-xl"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="text-xs text-slate-500">No image</div>
-              )}
-            </div>
-          </Link>
-        </div>
-
-
-        <div className="p-4 flex-1 flex flex-col">
-          <div className="font-bold leading-snug line-clamp-2">{p.name}</div>
-          <div className="text-sm text-slate-500 mt-1 line-clamp-2">
-            {shortText || `SKU: ${p.sku || "—"}`}
+    <div className="bg-white rounded-2xl soft-card overflow-hidden h-full flex flex-col">
+      <div className="relative p-5 bg-[#FAF8F6]">
+        <WishlistButton productId={p.id} />
+        <Link href={`/product/${p.id}`} className="block">
+          <div className="h-44 flex items-center justify-center">
+            {imgSrc ? (
+              <img
+                src={imgSrc}
+                alt={p.name}
+                className="object-contain w-[170px] h-[170px] rounded-xl"
+                loading="lazy"
+              />
+            ) : (
+              <div className="text-xs text-slate-500">No image</div>
+            )}
           </div>
-
-          {priceNode}
-
-          {isVariable && p.variants?.length ? (
-            <VariantRow
-              variants={p.variants}
-              selectedVariantId={selectedVariantId}
-              setSelectedVariantId={setSelectedVariantId}
-            />
-          ) : (
-            <div className="text-xs text-slate-500 mt-2">
-              Stock: <span className="font-bold text-slate-700">{p.stock ?? "—"}</span>
-            </div>
-          )}
-
-          <button
-            onClick={handleAddToCart}
-            className="cursor-pointer mt-4 w-full rounded-md border-2 border-[#008159] text-[#008159] font-bold py-2.5 text-sm hover:bg-[#008159] hover:text-white"
-          >
-            <ShoppingCart className="inline mr-2 w-5 h-5" />
-            কার্টে যুক্ত করুন
-          </button>
-        </div>
+        </Link>
       </div>
-    </ >
+
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="font-bold leading-snug line-clamp-2">{p.name}</div>
+        <div className="text-sm text-slate-500 mt-1 line-clamp-2">
+          {shortText || `SKU: ${p.sku || "—"}`}
+        </div>
+
+        {priceNode}
+
+        {isVariable && p.variants?.length ? (
+          <VariantRow
+            variants={p.variants}
+            selectedVariantId={selectedVariantId}
+            setSelectedVariantId={setSelectedVariantId}
+          />
+        ) : (
+          <div className="text-xs text-slate-500 mt-2">
+            Stock:{" "}
+            <span className="font-bold text-slate-700">{p.stock ?? "—"}</span>
+          </div>
+        )}
+
+        <button
+          onClick={handleAddToCart}
+          className="cursor-pointer mt-4 w-full rounded-md border-2 border-[#008159] text-[#008159] font-bold py-2.5 text-sm hover:bg-[#008159] hover:text-white"
+        >
+          <ShoppingCart className="inline mr-2 w-5 h-5" />
+          কার্টে যুক্ত করুন
+        </button>
+      </div>
+    </div>
   );
 }
 

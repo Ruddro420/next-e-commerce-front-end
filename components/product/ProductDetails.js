@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import Container from "@/components/ui/Container";
 import { Heart, ShoppingCart, RotateCw } from "lucide-react";
 import { useCart } from "@/store/cartStore";
+import toast from "react-hot-toast";
 
 /* ================= helpers ================= */
 
@@ -141,7 +142,7 @@ export default function ProductDetails({ productId }) {
 
     // Optional: route to cart
     // router.push("/cart");
-    alert("Added to cart ✅");
+    toast.success("Added to cart ✅");
   };
 
   const fetchProduct = useCallback(async (isRetryAttempt = false) => {

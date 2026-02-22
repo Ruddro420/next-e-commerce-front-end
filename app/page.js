@@ -10,6 +10,7 @@ import FreshDrops from "@/components/home/FreshDrops";
 
 import Container from "@/components/ui/Container";
 import ProductDetails from "@/components/product/ProductDetails";
+import BrandProductsPage from "@/components/brandproduct/BrandProductsPage";
 
 export default function HomePage() {
   return (
@@ -23,6 +24,7 @@ export default function HomePage() {
           <FeaturedCategory />
           <QuickFeatures />
           <FreshDrops />
+          <BrandProductsPage slug="special-offer" title="Special Offers" />
         </Container>
       </main>
 

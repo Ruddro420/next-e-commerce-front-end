@@ -6,6 +6,8 @@ import { useMemo, useEffect, useState } from "react";
 import { useCart } from "@/store/cartStore";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
+import ProductSearchBar from "./ProductSearchBar";
+import HeaderWishlistButton from "./HeaderWishlistButton";
 
 /* eslint-disable @next/next/no-html-link-for-pages */
 
@@ -34,13 +36,13 @@ function HeaderSkeleton() {
         <div className="flex items-center gap-3 ml-auto">
           {/* Special Offer Skeleton */}
           <div className="hidden lg:block w-24 h-10 rounded-full bg-gray-200 animate-pulse" />
-          
+
           {/* Wishlist Skeleton */}
           <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
-          
+
           {/* Cart Skeleton */}
           <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
-          
+
           {/* Auth Button Skeleton */}
           <div className="w-24 h-10 rounded-full bg-gray-200 animate-pulse" />
         </div>
@@ -110,31 +112,19 @@ export default function Header() {
         </a>
 
         {/* Search (desktop) */}
-        <div className="flex-1 hidden md:flex items-center gap-2">
-          <div className="flex-1 relative">
-            <input
-              className="w-full rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all"
-              placeholder="পণ্য সার্চ করুন (যেমন: গাড়ি, ইলিশ, মুড়ি)"
-            />
-            <button className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors">
-              খুঁজুন
-            </button>
-          </div>
-        </div>
+        <ProductSearchBar />
 
         {/* Actions */}
         <div className="flex items-center gap-3 ml-auto">
-          <button className="cursor-pointer hidden lg:inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors">
+          <Link
+            href="/brand/special-offer"
+            className="hidden lg:inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+          >
             🎁 <span>বিশেষ অফার</span>
-          </button>
+          </Link>
 
           {/* Wishlist */}
-          <button className="cursor-pointer relative inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-300 bg-white hover:bg-gray-50 transition-colors">
-            <Heart className="w-5 h-5" />
-            <span className="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-              12
-            </span>
-          </button>
+          <HeaderWishlistButton />
 
           {/* Cart */}
           <a
@@ -160,7 +150,7 @@ export default function Header() {
                 <User className="w-4 h-4" />
                 <span className="hidden sm:inline">{customer.name?.split(' ')[0] || 'Account'}</span>
               </button>
-              
+
               {/* Dropdown menu */}
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-fadeIn">
