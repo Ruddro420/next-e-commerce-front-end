@@ -41,7 +41,7 @@ function pickProducts(data) {
     return [];
 }
 
-export default function ProductSearchBar() {
+export default function ProductSearchBar({display}) {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://10.211.112.19:8000";
 
     const [q, setQ] = useState("");
@@ -158,7 +158,7 @@ export default function ProductSearchBar() {
     };
 
     return (
-        <div className="flex-1 hidden md:flex items-center gap-2" ref={boxRef}>
+        <div className={`flex-1 items-center ${display === "desktop" ? "md:flex hidden" : "flex"} gap-2`} ref={boxRef}>
             <form className="flex-1 relative" onSubmit={onSubmit}>
                 <input
                     value={q}

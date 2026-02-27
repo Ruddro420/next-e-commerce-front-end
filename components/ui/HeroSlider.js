@@ -54,7 +54,7 @@ export default function HeroSlider() {
     return (
         <section className="grid lg:grid-cols-3 gap-5">
             {/* LEFT: Carousel */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 lg:max-w-auto md:max-w-[100vw] max-w-[90vw]">
                 {/* Fix height ONLY on lg so it matches right column */}
                 <div className="relative overflow-hidden rounded-3xl soft-card bg-white h-[260px] sm:h-[300px] lg:h-[320px]">
                     {/* Slides track */}
@@ -83,7 +83,7 @@ export default function HeroSlider() {
                     </div>
 
                     {/* Controls */}
-                    <div className="absolute left-6 bottom-6 flex gap-2">
+                    <div className="absolute left-6 md:bottom-6 bottom-2 flex gap-2">
                         <button
                             onClick={prev}
                             className="cursor-pointer rounded-full bg-white/15 hover:bg-white/25 transition px-5 py-2.5 text-sm font-semibold border border-white/20 text-white"

@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
@@ -10,7 +12,7 @@ import { useCart } from "@/store/cartStore";
 function formatBDT(amount) {
   const n = Number(amount);
   if (isNaN(n)) return "৳ 0";
-  return `৳ ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `৳${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Image Component with fallback
@@ -165,8 +167,8 @@ export default function OrderSuccessPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Success Header */}
             <div className="border border-gray-300 bg-white rounded-2xl p-6 soft-card">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex items-start justify-between gap-4 md:flex-row flex-col">
+                <div >
                   <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
                     <span>✅</span> Order Confirmed
                   </div>
@@ -177,7 +179,7 @@ export default function OrderSuccessPage() {
                     We've received your order and will process it soon. Order #{order.order_number || order.id}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="md:text-right">
                   <div className="text-xs text-slate-500">Order Number</div>
                   <div className="font-extrabold text-lg">{order.order_number || `ORD-${order.id}`}</div>
                   <div className="text-xs text-slate-500 mt-1">{orderDate}</div>

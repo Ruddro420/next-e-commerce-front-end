@@ -13,8 +13,7 @@ function formatBDT(amount) {
   return `৳ ${n.toLocaleString("en-US")}`;
 }
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.0.106:8000";
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -718,13 +717,13 @@ function StepBar({ step }) {
   ];
 
   return (
-    <div className="rounded-2xl border border-gray-300 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-gray-300 bg-white md:p-4 p-2 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         {steps.map((s, idx) => (
-          <div key={s.id} className="flex items-center gap-3 flex-1">
+          <div key={s.id} className="flex items-center md:gap-3 gap-1 flex-1">
             <div
               className={[
-                "h-9 w-9 rounded-full flex items-center justify-center font-extrabold transition-colors",
+                "md:h-9 md:w-9 h-6 w-6 rounded-full flex items-center justify-center font-extrabold transition-colors md:text-base text-sm",
                 step >= s.id
                   ? "bg-emerald-600 text-white"
                   : "bg-slate-100 text-slate-500",

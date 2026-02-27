@@ -4,7 +4,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "https://brittopos.brittosoft.site",
+        hostname: "ecommerce.skinvee.org",
         // port: "8000",
         pathname: "/storage/**",
       },
