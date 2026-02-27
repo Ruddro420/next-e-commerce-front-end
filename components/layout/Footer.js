@@ -13,7 +13,7 @@ export default function Footer() {
           <div className="mt-4 rounded-3xl border border-white/10 p-5">
             <div className="text-xs opacity-70">9 AM - 8 PM</div>
             <div className="mt-1 text-3xl font-extrabold text-orange-400">
-              16793
+              01610841495
             </div>
           </div>
 
@@ -60,13 +60,13 @@ export default function Footer() {
           <div className="mt-4 text-sm text-slate-300 space-y-2">
             <div className="font-bold text-white">Star Tech Ltd</div>
             <div>
-              Head Office : 28 Kazi Nazrul Islam Ave, Navana Zohura Square, Dhaka 1000
+              Mirpur 10, Dhaka, Bangladesh
             </div>
 
             <div className="pt-2">
               <div className="text-xs opacity-70">Email:</div>
               <div className="text-orange-400 font-semibold">
-                webteam@startechbd.com
+                info@brittosoft.site
               </div>
             </div>
           </div>
