@@ -11,19 +11,48 @@ import ServiceHighlights from "@/components/layout/ServiceHighlights";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-// ✅ Global default title + template + favicon/icons
-export const metadata = {
-  title: {
-    default: "My Shop",
-    template: "%s | My Shop",
-  },
-  description: "Ecommerce website",
-  icons: {
-    icon: "/favicon.ico",     // main favicon
-    shortcut: "/favicon.ico", // optional
-    apple: "/apple-touch-icon.png", // optional (if exists)
-  },
-};
+async function getGeneralSettings() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) return null;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/settings/general`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+
+//Dynamic metadata (title + favicon)
+export async function generateMetadata() {
+  const settings = await getGeneralSettings();
+
+  const siteName = settings?.software_name || "My Shop";
+  const logoUrl = settings?.logo_url;
+  console.log(logoUrl);
+
+  const favicon = logoUrl ? logoUrl : "/favicon.ico";
+
+  return {
+    title: {
+      default: siteName,
+      template: `%s | ${siteName}`,
+    },
+    description: "Ecommerce website",
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+  };
+}
+
 
 
 export default function RootLayout({ children }) {
